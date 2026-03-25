@@ -48,17 +48,13 @@ export default function Home() {
         <Guarantee />
 
         <p className="text-secondary text-[15px] leading-relaxed">
-          In Lido V3, each staking vault can mint stETH backed by its ETH
-          collateral. The{" "}
-          <code className="font-mono text-[13px]">_locked()</code>{" "}
-          function computes how much collateral must remain locked:
-          the liability plus a reserve computed as{" "}
-          <code className="font-mono text-[13px]">
-            ceilDiv(liability × RR, BP − RR)
-          </code>.
-          This inequality guarantees that the locked amount always
-          covers the full stETH obligation adjusted by the reserve
-          ratio.{" "}
+          Lido V3 introduced StakingVaults, which allow stETH to be
+          minted against ETH held in isolated vaults and used for
+          validator operations. The VaultHub contract enforces
+          overcollateralization by requiring that part of the
+          vault&apos;s value remains locked, covering both the
+          outstanding liability and an additional reserve providing
+          a buffer against losses such as slashing.{" "}
           <a
             href="https://docs.lido.fi/run-on-lido/stvaults/tech-documentation/tech-design/"
             target="_blank"

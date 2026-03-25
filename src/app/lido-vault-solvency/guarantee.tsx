@@ -130,7 +130,7 @@ export function Guarantee() {
           aria-hidden={!showEnglish}
         >
           <p className="text-xl md:text-2xl leading-snug">
-            A vault always requires to lock more ETH than the stETH minted against it.
+            A vault is required to lock more ETH than the stETH minted against it.
           </p>
         </div>
       </div>
