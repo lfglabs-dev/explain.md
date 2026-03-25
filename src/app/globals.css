@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+@theme inline {
+  --color-background: #ffffff;
+  --color-foreground: #1a1a1a;
+  --color-secondary: #6b7280;
+  --color-border: #e5e5e5;
+  --color-surface: #f9fafb;
+  --font-serif: "Source Serif 4", "Georgia", "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-serif);
+}
