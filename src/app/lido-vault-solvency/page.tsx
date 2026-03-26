@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import {
   Section,
   SectionTitle,
@@ -279,12 +280,12 @@ export default function LidoVaultSolvency() {
       <Section>
         <SectionTitle>Learn more</SectionTitle>
         <p className="leading-relaxed">
-          <a
+          <Link
             href="/"
             className="underline underline-offset-3 hover:text-foreground transition-colors"
           >
             What is a formal proof?
-          </a>
+          </Link>
           {" "}A short explanation for non-specialists.
         </p>
       </Section>
