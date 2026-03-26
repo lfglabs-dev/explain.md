@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import katex from "katex";
+import { ExternalLinkIcon } from "../components";
 
 function K({ tex }: { tex: string }) {
   const html = katex.renderToString(tex, { throwOnError: false });
@@ -130,7 +131,8 @@ export function Guarantee() {
           aria-hidden={!showEnglish}
         >
           <p className="text-xl md:text-2xl leading-snug">
-            A vault is required to lock more ETH than the stETH minted against it.
+            stETH can only be minted if the vault&apos;s total locked
+            ETH exceeds its total minted stETH.
           </p>
         </div>
       </div>
@@ -143,19 +145,7 @@ export function Guarantee() {
           className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-700 hover:text-emerald-900 transition-colors cursor-pointer"
         >
           View Lean
-          <svg
-            viewBox="0 0 24 24"
-            className="w-[13px] h-[13px]"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-            <polyline points="15 3 21 3 21 9" />
-            <line x1="10" y1="14" x2="21" y2="3" />
-          </svg>
+          <ExternalLinkIcon />
         </a>
       </div>
     </div>

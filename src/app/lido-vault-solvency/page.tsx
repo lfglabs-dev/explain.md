@@ -1,45 +1,85 @@
-import katex from "katex";
+"use client";
+
+import React from "react";
+import {
+  Section,
+  SectionTitle,
+  Disclosure,
+  CodeBlock,
+  ExternalLink,
+} from "../components";
 import { Guarantee } from "./guarantee";
 
-function Equation({ tex, display = false }: { tex: string; display?: boolean }) {
-  const html = katex.renderToString(tex, {
-    displayMode: display,
-    throwOnError: false,
-  });
-  return <span dangerouslySetInnerHTML={{ __html: html }} />;
-}
-
-function Section({
+function Hypothesis({
+  name,
+  constraint,
+  source,
   children,
-  className = "",
+  border = true,
 }: {
+  name: string;
+  constraint: string;
+  source: string;
   children: React.ReactNode;
-  className?: string;
+  border?: boolean;
 }) {
-  return <section className={`mb-20 ${className}`}>{children}</section>;
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-lg font-semibold tracking-tight mb-4">{children}</h2>
+    <li className={`list-none ${border ? "border-b border-border/50" : ""}`}>
+      <details className="group/hyp">
+        <summary className="px-5 py-3 cursor-pointer select-none list-none flex items-center gap-3 [&::-webkit-details-marker]:hidden">
+          <svg
+            viewBox="0 0 24 24"
+            className="w-3.5 h-3.5 text-secondary/50 transition-transform group-open/hyp:rotate-90 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="9 6 15 12 9 18" />
+          </svg>
+          <code className="font-mono text-[12px] font-medium">{name}</code>
+          <span className="text-secondary text-[13px]">{constraint}</span>
+        </summary>
+        <div className="px-5 pb-3 pl-12 text-[13px] text-secondary leading-relaxed">
+          <p className="mb-1">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-secondary/60">
+              {source}
+            </span>
+          </p>
+          <p>{children}</p>
+        </div>
+      </details>
+    </li>
   );
 }
 
-function Code({ children }: { children: React.ReactNode }) {
-  return (
-    <pre className="bg-surface border border-border rounded px-5 py-4 text-sm font-mono leading-relaxed overflow-x-auto">
-      {children}
-    </pre>
-  );
-}
+const VERIFY_COMMAND = `git clone https://github.com/lfglabs-dev/verity-benchmark
+cd verity-benchmark
+./scripts/run_default_agent.sh lido/vaulthub_locked/locked_funds_solvency`;
 
-export default function Home() {
+export default function LidoVaultSolvency() {
   return (
     <main className="font-serif max-w-[680px] mx-auto px-6 py-20 md:py-32">
-      {/* Header */}
       <header className="mb-6">
         <h1 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
           Lido V3 Vault Solvency Guarantee
+          <span className="relative inline-block ml-2 translate-y-[5px] group cursor-default">
+            <svg
+              viewBox="0 0 24 24"
+              className="w-6 h-6 md:w-7 md:h-7 text-black/25"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 px-2.5 py-1 rounded text-xs font-sans font-normal text-white bg-neutral-800 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              Formally proven
+            </span>
+          </span>
         </h1>
       </header>
 
@@ -49,249 +89,190 @@ export default function Home() {
 
         <p className="text-secondary text-[15px] leading-relaxed">
           Lido V3 introduced StakingVaults, which allow stETH to be
-          minted against ETH held in isolated vaults and used for
-          validator operations. The VaultHub contract enforces
-          overcollateralization by requiring that part of the
-          vault&apos;s value remains locked, covering both the
-          outstanding liability and an additional reserve providing
-          a buffer against losses such as slashing.{" "}
-          <a
-            href="https://docs.lido.fi/run-on-lido/stvaults/tech-documentation/tech-design/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block align-middle text-secondary hover:text-foreground transition-colors"
-            title="Open architecture documentation"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="w-3.5 h-3.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-              <polyline points="15 3 21 3 21 9" />
-              <line x1="10" y1="14" x2="21" y2="3" />
-            </svg>
-          </a>
+          minted against ETH held in isolated vaults. The VaultHub
+          contract enforces overcollateralization: part of the
+          vault&apos;s value must remain locked, covering the
+          outstanding stETH liability plus a reserve buffer.
+        </p>
+        <p className="mt-2 text-secondary text-[15px]">
+          <ExternalLink href="https://docs.lido.fi/run-on-lido/stvaults/tech-documentation/tech-design/">
+            View technical design
+          </ExternalLink>
         </p>
       </Section>
 
       {/* Why this matters */}
       <Section>
         <SectionTitle>Why this matters</SectionTitle>
-        <ul className="space-y-2 leading-relaxed">
-          <li>
-            Vault-minted stETH is always redeemable for ETH at 1:1,
-            the core invariant of the Lido protocol
-          </li>
-          <li>
-            Losses in one vault never spill over to stETH holders or other vaults
-          </li>
-          <li>
-            The reserve margin creates a buffer before a vault becomes
-            unhealthy and is subject to forced rebalancing
-          </li>
-        </ul>
+        <p className="leading-relaxed mb-6">
+          VaultHub only allows minting when{" "}
+          <code className="font-mono text-[13px]">
+            totalValue ≥ _locked()
+          </code>
+          . If{" "}
+          <code className="font-mono text-[13px]">_locked()</code>{" "}
+          didn&apos;t satisfy this inequality (due to an overflow,
+          rounding error, or edge case), a vault could pass that check
+          while locking less ETH than the stETH minted against it.
+        </p>
+        <Disclosure title="What this invariant covers">
+          <p className="mb-3 text-secondary">
+            This proof covers the <em>formula</em>: for any inputs,{" "}
+            <code className="font-mono text-[12px]">_locked()</code>{" "}
+            never underestimates how much ETH should be locked.
+          </p>
+          <p className="text-secondary">
+            It does not cover whether the vault <em>actually holds</em>{" "}
+            that much ETH. That is enforced at runtime: VaultHub
+            checks{" "}
+            <code className="font-mono text-[12px]">
+              totalValue ≥ locked
+            </code>{" "}
+            at mint time. If a validator is slashed between oracle
+            reports, the vault may temporarily be under-collateralized.
+            The contract handles this through forced validator exits
+            (EIP-7002) and permissionless{" "}
+            <code className="font-mono text-[12px]">forceRebalance()</code>.
+          </p>
+        </Disclosure>
       </Section>
 
-      {/* Why this is difficult */}
+      {/* How this was proven */}
       <Section>
-        <SectionTitle>Why this is difficult</SectionTitle>
+        <SectionTitle>How this was proven</SectionTitle>
         <p className="leading-relaxed mb-4">
           The{" "}
           <code className="font-mono text-[13px]">_locked()</code>{" "}
           function uses non-linear{" "}
           <code className="font-mono text-[13px]">uint256</code>{" "}
-          arithmetic: multiplications, ceiling division via{" "}
-          <code className="font-mono text-[13px]">Math256.ceilDiv</code>,
-          and a{" "}
-          <code className="font-mono text-[13px]">max()</code>{" "}
-          over the reserve and a minimum floor, all within
-          2<sup>256</sup> bounds.
-        </p>
-        <p className="text-secondary leading-relaxed">
+          arithmetic (multiplications, ceiling division,{" "}
+          <code className="font-mono text-[13px]">max()</code>)
+          that standard verification tools cannot reason about.
           This property was flagged as unproven (finding F-01) in
-          Certora&apos;s formal verification report. Standard SMT-based
-          tools typically cannot handle non-linear integer reasoning with
-          division.
+          Certora&apos;s formal verification report.
         </p>
-      </Section>
-
-      {/* Why you can trust this */}
-      <Section>
-        <SectionTitle>Why you can trust this</SectionTitle>
-        <div className="space-y-4 leading-relaxed">
-          <p>
-            The proof was generated automatically and checked by the Lean 4
-            theorem prover. Every logical step is verified deterministically by
-            Lean&apos;s kernel, a small, well-audited program that accepts or
-            rejects proofs.
-          </p>
-          <p>If the proof were incorrect, it would not compile.</p>
-          <p className="font-medium">
-            You do not need to trust the proof generator.
-          </p>
-        </div>
-      </Section>
-
-      {/* Verify it yourself */}
-      <Section>
-        <SectionTitle>Verify it yourself</SectionTitle>
-        <Code>
-          {`git clone https://github.com/lfglabs-dev/verity-benchmark
-cd verity-benchmark
-./scripts/run_default_agent.sh lido/vaulthub_locked/locked_funds_solvency`}
-        </Code>
-        <p className="mt-4 leading-relaxed">
-          If the build succeeds, the proof is correct. No other check is needed.
-        </p>
-        <div className="mt-4 text-secondary text-sm space-x-6">
-          <a
-            href="https://github.com/lfglabs-dev/verity-benchmark"
-            className="underline underline-offset-3 hover:text-foreground transition-colors"
-          >
-            Source repository
-          </a>
-        </div>
-      </Section>
-
-      {/* Trust model */}
-      <Section>
-        <SectionTitle>Trust model</SectionTitle>
-        <div className="border border-border rounded px-6 py-5">
-          <p className="leading-relaxed mb-4">
-            To trust this result, you only need to trust:
-          </p>
-          <ul className="space-y-1 leading-relaxed mb-6">
-            <li>The Lean proof checker (open source, widely used)</li>
-            <li>The stated assumptions (listed below)</li>
-          </ul>
-          <p className="leading-relaxed">You do <em>not</em> need to trust:</p>
-          <ul className="space-y-1 leading-relaxed mt-2">
-            <li>The AI that generated the proof</li>
-            <li>The authors of this page</li>
-          </ul>
-        </div>
-      </Section>
-
-      {/* Assumptions */}
-      <Section>
-        <SectionTitle>Assumptions</SectionTitle>
-        <p className="leading-relaxed mb-4 text-secondary">
-          The proof holds under explicit preconditions, each enforced
-          by VaultHub&apos;s connection and minting logic.
-        </p>
-        <ul className="space-y-3 leading-relaxed">
-          <li>
-            <strong className="font-medium">Max liability bound</strong>
-            <span className="text-secondary">
-              {": "}<code className="font-mono text-[13px]">maxLiabilityShares ≥ liabilityShares</code>.
-              Enforced by{" "}
-              <code className="font-mono text-[13px]">_increaseLiability</code>{" "}
-              on every mint. The actual shares minted never exceed the
-              per-oracle-period maximum.
-            </span>
-          </li>
-          <li>
-            <strong className="font-medium">Reserve ratio bounds</strong>
-            <span className="text-secondary">
-              {": "}<code className="font-mono text-[13px]">0 &lt; reserveRatioBP &lt; 10000</code>.
-              Set at vault connection and validated
-              by{" "}
-              <code className="font-mono text-[13px]">_connectVault</code>.
-              A 30% ratio means 1.43 ETH must be locked per stETH minted.
-            </span>
-          </li>
-          <li>
-            <strong className="font-medium">Positive protocol state</strong>
-            <span className="text-secondary">
-              {": "}<code className="font-mono text-[13px]">totalShares &gt; 0</code> and{" "}
-              <code className="font-mono text-[13px]">totalPooledEther &gt; 0</code>.
-              Required for share-to-ETH conversion. Always true while
-              Lido has active deposits.
-            </span>
-          </li>
-          <li>
-            <strong className="font-medium">No arithmetic overflow</strong>
-            <span className="text-secondary">
-              {": "}intermediate products like{" "}
-              <code className="font-mono text-[13px]">
-                liabilityShares × totalPooledEther
-              </code>{" "}
-              and{" "}
-              <code className="font-mono text-[13px]">
-                liability × reserveRatioBP
-              </code>{" "}
-              stay within{" "}
-              <code className="font-mono text-[13px]">uint256</code>.
-            </span>
-          </li>
-        </ul>
-        <p className="mt-4 text-secondary text-sm">
-          <a
-            href="https://github.com/lfglabs-dev/verity-benchmark/tree/main/Benchmark/Cases/Lido/VaulthubLocked"
-            className="underline underline-offset-3 hover:text-foreground transition-colors"
-          >
-            View full specification →
-          </a>
-        </p>
-      </Section>
-
-      {/* What was proven */}
-      <Section>
-        <SectionTitle>What was proven</SectionTitle>
         <p className="leading-relaxed mb-4">
-          Five theorems, from the core solvency result to supporting lemmas:
+          The contract logic was modeled in{" "}
+          <ExternalLink href="https://github.com/lfglabs-dev/verity-benchmark/blob/main/Benchmark/Cases/Lido/VaulthubLocked/Contract.lean">
+            Verity
+          </ExternalLink>
+          , a framework for expressing smart contract logic in a way
+          that allows mathematical proofs. The theorem was given to
+          AI agents as a benchmark task. A proof was generated by
+          GPT 5.4 for ~$45 (3M tokens) and is provided as{" "}
+          <ExternalLink href="https://github.com/lfglabs-dev/verity-benchmark/blob/main/Benchmark/Cases/Lido/VaulthubLocked/Proofs.lean">
+            reference
+          </ExternalLink>
+          .
         </p>
-        <ul className="space-y-3 leading-relaxed">
-          <li>
-            <strong className="font-medium">locked_funds_solvency</strong>
-            <span className="text-secondary">
-              {": "}the main result. The output of{" "}
-              <code className="font-mono text-[13px]">_locked()</code>,
-              scaled by the reserve-ratio complement, always exceeds the
-              stETH liability scaled by total basis points.
-            </span>
-          </li>
-          <li>
-            <strong className="font-medium">ceildiv_sandwich</strong>
-            <span className="text-secondary">
-              {": "}rounding up never loses value.{" "}
-              <code className="font-mono text-[13px]">ceilDiv(x, d) · d ≥ x</code>.
-              Key arithmetic fact used in the main proof.
-            </span>
-          </li>
-          <li>
-            <strong className="font-medium">shares_conversion_monotone</strong>
-            <span className="text-secondary">
-              {": "}if vault A holds more shares than vault B, it also
-              owes more ETH.{" "}
-              <code className="font-mono text-[13px]">getPooledEthBySharesRoundUp</code>{" "}
-              preserves ordering.
-            </span>
-          </li>
-          <li>
-            <strong className="font-medium">max_liability_shares_bound</strong>
-            <span className="text-secondary">
-              {": "}the vault&apos;s current{" "}
-              <code className="font-mono text-[13px]">liabilityShares</code>{" "}
-              never exceeds{" "}
-              <code className="font-mono text-[13px]">maxLiabilityShares</code>,
-              as maintained by VaultHub&apos;s minting and reporting logic.
-            </span>
-          </li>
-          <li>
-            <strong className="font-medium">reserve_ratio_bounds</strong>
-            <span className="text-secondary">
-              {": "}the{" "}
-              <code className="font-mono text-[13px]">reserveRatioBP</code>{" "}
-              is always between 1 and 9999, enforced at vault connection.
-            </span>
-          </li>
+        <p className="leading-relaxed mb-4">
+          The proof is checked by Lean 4&apos;s kernel, a small
+          program that accepts or rejects proofs deterministically.
+          If the proof were wrong, it would not compile.
+        </p>
+        <Disclosure title="Verify it yourself" className="mb-4">
+          <CodeBlock>{VERIFY_COMMAND}</CodeBlock>
+          <p className="mt-3 text-secondary">
+            If the build succeeds, the proof is correct.{" "}
+            <ExternalLink href="https://github.com/lfglabs-dev/verity-benchmark">
+              Source repository
+            </ExternalLink>
+          </p>
+        </Disclosure>
+        <p className="text-secondary text-[14px] leading-relaxed">
+          Note: the current proof is neither optimized for performance
+          nor elegance. It may be replaced by a cleaner version as
+          the benchmark is run with more models.
+        </p>
+      </Section>
+
+      {/* Hypotheses */}
+      <Section>
+        <SectionTitle>Hypotheses</SectionTitle>
+        <p className="leading-relaxed mb-4 text-secondary text-[15px]">
+          The proof uses zero axioms. The theorem requires these
+          hypotheses, which encode assumptions about valid protocol
+          states:
+        </p>
+        <ul className="space-y-0 border border-border rounded overflow-hidden text-[14px]">
+          <Hypothesis
+            name="hMaxLS"
+            constraint="maxLiabilityShares ≥ liabilityShares"
+            source="Certora P-VH-04, verified"
+          >
+            Core invariant maintained by VaultHub&apos;s minting and
+            reporting logic.{" "}
+            <code className="font-mono text-[12px]">_locked()</code>{" "}
+            is computed from{" "}
+            <code className="font-mono text-[12px]">maxLiabilityShares</code>{" "}
+            (worst-case), not current shares. Without this, the locked
+            amount wouldn&apos;t cover the real liability.
+          </Hypothesis>
+          <Hypothesis
+            name="hRR_pos"
+            constraint="reserveRatioBP > 0"
+            source="Certora P-VH-03, verified"
+          >
+            Enforced by{" "}
+            <code className="font-mono text-[12px]">connectVault()</code>.
+            A zero reserve ratio would make the overcollateralization
+            trivial but the proof structure requires it for the
+            algebra to work out.
+          </Hypothesis>
+          <Hypothesis
+            name="hRR_lt"
+            constraint="reserveRatioBP < 10000"
+            source="Certora P-VH-03, verified"
+          >
+            Critical. If{" "}
+            <code className="font-mono text-[12px]">reserveRatioBP ≥ 10000</code>,
+            the subtraction{" "}
+            <code className="font-mono text-[12px]">BP − RR</code>{" "}
+            underflows in{" "}
+            <code className="font-mono text-[12px]">uint256</code>,
+            producing a nonsensical denominator. On-chain, Solidity
+            0.8+ would revert; in the Lean model, it wraps.
+          </Hypothesis>
+          <Hypothesis
+            name="hTS"
+            constraint="totalShares > 0"
+            source="Lido base assumption"
+          >
+            Required for share-to-ETH conversion. If{" "}
+            <code className="font-mono text-[12px]">totalShares = 0</code>,{" "}
+            <code className="font-mono text-[12px]">ceilDiv</code>{" "}
+            divides by zero and underestimates the liability. In
+            practice, always true after Lido&apos;s bootstrap deposit.
+          </Hypothesis>
+          <Hypothesis
+            name="hTPE"
+            constraint="totalPooledEther > 0"
+            source="Lido base assumption"
+            border={false}
+          >
+            Unused by the proof (prefixed with{" "}
+            <code className="font-mono text-[12px]">_</code> in Lean).
+            Included for specification completeness: a pool with shares
+            but no ether would be nonsensical.
+          </Hypothesis>
         </ul>
+        <p className="mt-2 text-secondary text-[13px] leading-relaxed">
+          Five additional{" "}
+          <code className="font-mono text-[12px]">hNoOverflow</code>{" "}
+          hypotheses guard that intermediate{" "}
+          <code className="font-mono text-[12px]">uint256</code>{" "}
+          products stay below 2<sup>256</sup>. With Lido&apos;s total
+          staked ETH at ~30M ETH (~2<sup>85</sup> wei), products reach
+          ~2<sup>170</sup>, far below the 2<sup>256</sup> limit.
+        </p>
+        <p className="mt-3 text-secondary text-sm space-x-4">
+          <ExternalLink href="https://github.com/lfglabs-dev/verity-benchmark/blob/main/Benchmark/Cases/Lido/VaulthubLocked/Specs.lean#L30-L52">
+            View in Lean
+          </ExternalLink>
+          <ExternalLink href="https://github.com/lidofinance/audits/blob/main/Certora%20Lido%20V3%20Formal%20Verification%20Report%20-%2012-2025.pdf">
+            Certora report
+          </ExternalLink>
+        </p>
       </Section>
 
       {/* Learn more */}
@@ -308,17 +289,16 @@ cd verity-benchmark
         </p>
       </Section>
 
-      {/* Footer */}
       <footer className="mt-12 pt-8 border-t border-border">
         <p className="text-secondary text-sm">
           Part of the{" "}
           <a
-            href="https://verity.labs"
+            href="https://github.com/lfglabs-dev/verity-benchmark"
             className="underline underline-offset-3 hover:text-foreground transition-colors"
           >
-            Verity
+            Verity benchmark
           </a>{" "}
-          benchmark initiative
+          initiative
         </p>
       </footer>
     </main>
