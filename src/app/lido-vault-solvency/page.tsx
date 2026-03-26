@@ -64,7 +64,7 @@ export default function LidoVaultSolvency() {
       <header className="mb-6">
         <h1 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
           Lido V3 Vault Solvency Guarantee
-          <span className="relative inline-block ml-2 translate-y-[5px] group cursor-default">
+          <span className="relative inline-block ml-2 translate-y-[12px] group cursor-default">
             <svg
               viewBox="0 0 24 24"
               className="w-6 h-6 md:w-7 md:h-7 text-black/25"
