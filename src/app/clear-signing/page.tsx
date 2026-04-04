@@ -327,7 +327,7 @@ function VerifiedDisplayStep({
           </p>
         </div>
         <p className="text-[12px] text-emerald-700/70 mt-2 ml-6">
-          Intent verified by Groth16 proof — template and values match the
+          Intent verified by Groth16 proof: template and values match the
           calldata commitment
         </p>
       </div>
@@ -563,7 +563,7 @@ export default function ClearSigningPage() {
       <section className="mb-16 leading-relaxed space-y-4">
         <p>
           When you sign an Ethereum transaction, your wallet shows you raw
-          calldata — a hex blob that means nothing to a human. Clear signing
+          calldata, a hex blob that means nothing to a human. Clear signing
           translates this into a sentence you can read and verify.
         </p>
         <p>
@@ -572,8 +572,8 @@ export default function ClearSigningPage() {
             formally defined intent spec
           </ExternalLink>{" "}
           and proven correct with a Groth16 zero-knowledge proof. The proof
-          guarantees: <em>this sentence is the only valid interpretation of this
-          calldata</em>.
+          guarantees: <em>this sentence is a valid interpretation of this
+          calldata according to this spec</em>.
         </p>
       </section>
 
@@ -585,30 +585,30 @@ export default function ClearSigningPage() {
         <div className="leading-relaxed space-y-4 text-[15px]">
           <ol className="list-decimal list-inside space-y-2">
             <li>
-              <strong className="font-medium">Spec matching</strong> — the
+              <strong className="font-medium">Spec matching</strong>: the
               contract address is matched to a known intent specification
               (USDC, Uniswap, etc.)
             </li>
             <li>
-              <strong className="font-medium">Function identification</strong> —
+              <strong className="font-medium">Function identification</strong>:
               the 4-byte selector identifies which function is being called
             </li>
             <li>
-              <strong className="font-medium">Calldata decoding</strong> — raw
+              <strong className="font-medium">Calldata decoding</strong>: raw
               bytes are decoded into typed parameters using the ABI
             </li>
             <li>
-              <strong className="font-medium">Intent evaluation</strong> — the
+              <strong className="font-medium">Intent evaluation</strong>: the
               DSL program selects a template and fills its holes with parameter
               values
             </li>
             <li>
-              <strong className="font-medium">Address resolution</strong> —
+              <strong className="font-medium">Address resolution</strong>:
               raw addresses are progressively resolved to known names (tokens,
               ENS, protocols)
             </li>
             <li>
-              <strong className="font-medium">Verified display</strong> — the
+              <strong className="font-medium">Verified display</strong>: the
               final sentence is displayed with a proof that it matches the
               calldata commitment
             </li>
@@ -725,7 +725,7 @@ export default function ClearSigningPage() {
         </h2>
         <div className="leading-relaxed space-y-4 text-[15px]">
           <p>
-            The clear signing process is not just template matching — it is backed
+            The clear signing process is not just template matching. It is backed
             by a Groth16 zero-knowledge proof. The proof guarantees:
           </p>
           <div className="border border-border rounded px-6 py-5 space-y-3 text-[14px]">
