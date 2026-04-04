@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "circomlibjs": "^0.1.7",
+    "ethers": "^6.16.0",
     "katex": "^0.16.41",
     "next": "16.2.1",
     "react": "19.2.4",

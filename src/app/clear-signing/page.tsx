@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { ExternalLink, Disclosure } from "../components";
-import { findSpec } from "./engine/specs";
+import { findSpec, findSpecFromEns } from "./engine/specs";
 import { extractSelector, decodeCalldata } from "./engine/decoder";
 import { evaluateIntent, collectAllTemplates } from "./engine/evaluator";
 import {
@@ -363,12 +363,14 @@ function SpecMatchStep({
               Spec registry (ENS)
             </summary>
             <p className="mt-2 text-[13px] leading-relaxed text-emerald-600">
-              Specs are published to an ENS-based registry managed by the Verity
-              team, providing a verifiable on-chain source of truth. In
-              production, wallets (e.g. MetaMask) would maintain their own
-              registry with specs approved by the hardware wallet, establishing
-              a full chain of trust from spec author to display device. This PoC
-              uses the ENS registry directly.
+              This lookup queries{" "}
+              <span className="font-mono">veryclear.eth</span> on Ethereum
+              mainnet, an ENS-based registry managed by the Verity team. Each
+              text record maps a contract address to a spec identifier,
+              providing a verifiable on-chain source of truth. Alternatively,
+              wallets could maintain their own registry with specs approved by
+              the hardware wallet, establishing a full chain of trust from spec
+              author to display device.
             </p>
           </details>
         </>
@@ -783,7 +785,7 @@ export default function ClearSigningPage() {
     try {
       // Step 1: Spec lookup
       await delay(300);
-      spec = findSpec(contractAddress);
+      spec = await findSpecFromEns(contractAddress);
       addStep({ kind: "spec-match", spec, address: contractAddress });
       if (spec) setActiveSpec(spec);
       if (!spec) {
