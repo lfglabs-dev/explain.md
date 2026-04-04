@@ -11,7 +11,7 @@
  *   - Poseidon(selector, params...) == calldataCommitment (public output)
  *   - Poseidon(templateId, holes...) == outputCommitment (public output)
  *
- * The Poseidon hashes are computed inside the circuit over BN254's
+ * The Poseidon hashes are computed inside the circuit over BLS12-381's
  * scalar field. We do NOT compute them in JS — the circuit outputs them
  * as public signals.
  *
@@ -137,30 +137,22 @@ type WitnessResult = {
 /**
  * Build the witness input for the circuit.
  *
- * The circuit has 6 signals for ERC-20 functions:
- *   Public:  selector, calldataCommitment, outputCommitment
- *   Private: param signals (e.g. spender, amount_lo, amount_hi)
+ * The circuit takes:
+ *   Public input:  selector
+ *   Public outputs: calldataCommitment, outputCommitment (computed by circuit)
+ *   Private inputs: param signals (e.g. spender, amount_lo, amount_hi)
  *
- * The commitments are Poseidon hashes computed over BN254's scalar field
- * (matching the circomlib Poseidon used inside the circuit):
- *   calldataCommitment = Poseidon(selector, params...)
- *   outputCommitment   = Poseidon(templateId, params...)
+ * The Poseidon commitments are computed INSIDE the circuit over BLS12-381's
+ * scalar field. No JS Poseidon computation needed.
  */
-async function buildWitnessInput(
+function buildWitnessInput(
   binding: Binding,
   params: Map<string, Value>,
-  emitted: EmittedTemplate
-): Promise<WitnessResult> {
-  const { buildPoseidon } = await import("circomlibjs");
-  const poseidon = await buildPoseidon();
-  const F = poseidon.F;
-
+): WitnessResult {
   const selectorInt = BigInt(
     parseInt(binding.selector.slice(2), 16)
   );
 
-  // Calldata commitment: Poseidon(selector, params...)
-  const cdInputs: bigint[] = [selectorInt];
   const witnessFields: Record<string, string> = {};
   const cdNamed: { name: string; value: string }[] = [
     { name: "selector", value: selectorInt.toString() },
@@ -172,63 +164,28 @@ async function buildWitnessInput(
 
     if (value.kind === "int") {
       const [lo, hi] = splitUint256(value.value);
-      cdInputs.push(lo, hi);
       witnessFields[`${paramName}_lo`] = lo.toString();
       witnessFields[`${paramName}_hi`] = hi.toString();
       cdNamed.push({ name: `${paramName}_lo`, value: lo.toString() });
       cdNamed.push({ name: `${paramName}_hi`, value: hi.toString() });
     } else if (value.kind === "address") {
       const addrInt = BigInt(value.value);
-      cdInputs.push(addrInt);
       witnessFields[paramName] = addrInt.toString();
       cdNamed.push({ name: paramName, value: addrInt.toString() });
     } else if (value.kind === "bool") {
       const boolInt = value.value ? 1n : 0n;
-      cdInputs.push(boolInt);
       witnessFields[paramName] = boolInt.toString();
       cdNamed.push({ name: paramName, value: boolInt.toString() });
     }
   }
 
-  const cdHash = F.toObject(poseidon(cdInputs));
-
-  // Output commitment: Poseidon(templateId, params...)
-  // Order matches circuit's outHash (binding parameter order)
-  const templateId = BigInt(emitted.templateIndex);
-  const outInputs: bigint[] = [templateId];
-  const outNamed: { name: string; value: string }[] = [
-    { name: "templateId", value: templateId.toString() },
-  ];
-
-  for (const paramName of binding.paramMapping) {
-    const value = params.get(paramName);
-    if (!value) continue;
-
-    if (value.kind === "int") {
-      const [lo, hi] = splitUint256(value.value);
-      outInputs.push(lo, hi);
-      outNamed.push({ name: `${paramName}_lo`, value: lo.toString() });
-      outNamed.push({ name: `${paramName}_hi`, value: hi.toString() });
-    } else if (value.kind === "address") {
-      outInputs.push(BigInt(value.value));
-      outNamed.push({ name: paramName, value: BigInt(value.value).toString() });
-    } else if (value.kind === "bool") {
-      outInputs.push(value.value ? 1n : 0n);
-      outNamed.push({ name: paramName, value: (value.value ? 1n : 0n).toString() });
-    }
-  }
-
-  const outHash = F.toObject(poseidon(outInputs));
-
   return {
     witness: {
       selector: selectorInt.toString(),
-      calldataCommitment: cdHash.toString(),
-      outputCommitment: outHash.toString(),
       ...witnessFields,
     },
     calldataInputs: cdNamed,
-    outputInputs: outNamed,
+    outputInputs: [], // Computed by circuit, read from publicSignals
   };
 }
 
@@ -273,9 +230,9 @@ export async function generateAndVerifyProof(
   const snarkjs = await import("snarkjs");
 
   // Build witness input — raw params only, no JS-computed commitments.
-  // The circuit computes Poseidon hashes internally over BN254's
+  // The circuit computes Poseidon hashes internally over BLS12-381's
   // scalar field and exposes them as public outputs.
-  const { witness, calldataInputs, outputInputs } = await buildWitnessInput(binding, params, emitted);
+  const { witness, calldataInputs, outputInputs } = buildWitnessInput(binding, params);
 
   // Circuit artifact paths (served from /public)
   const wasmPath = `/circuits/${circuitName}/circuit.wasm`;
@@ -301,8 +258,10 @@ export async function generateAndVerifyProof(
   // Public signals (snarkjs convention: outputs first, then public inputs):
   // [calldataCommitment, outputCommitment, selector]
   return {
-    calldataCommitment: witness.calldataCommitment,
-    outputCommitment: witness.outputCommitment,
+    // Public signals order (snarkjs: outputs first, then public inputs):
+    // [calldataCommitment, outputCommitment, selector]
+    calldataCommitment: publicSignals[0],
+    outputCommitment: publicSignals[1],
     calldataInputs,
     outputInputs,
     proof: proof as Groth16Proof,
