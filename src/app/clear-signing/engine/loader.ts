@@ -22,6 +22,7 @@ import type {
   Format,
   ParamType,
 } from "./types";
+import type { EnsSpecEntry } from "./ens";
 
 // ─── JSON Types (raw compiler output) ───────────────────────────────────────
 
@@ -94,48 +95,9 @@ function parseExpr(e: JsonExpr): Expr {
       return { kind: "const", value: BigInt(e.value) };
     case "eq":
       return { kind: "eq", left: parseExpr(e.left), right: parseExpr(e.right) };
-    case "call":
-      // Inline function calls: for isMaxUint(amount), we expand to eq(amount, MAX)
-      // This is handled by the evaluator which resolves calls
-      return { kind: "eq", left: parseExpr(e.args[0]), right: { kind: "const", value: 0n } };
     default:
       return { kind: "const", value: 0n };
   }
-}
-
-function parseStmt(s: JsonStmt): Stmt {
-  switch (s.kind) {
-    case "emit":
-      return { kind: "emit", template: parseTemplate(s.template) };
-    case "when":
-      return {
-        kind: "when",
-        condition: parseCondition(s.condition),
-        then: s.then.map(parseStmt),
-        otherwise: s.otherwise.map(parseStmt),
-      };
-    default:
-      // Skip unsupported statements
-      return { kind: "emit", template: { text: "(unsupported)", holes: [] } };
-  }
-}
-
-/**
- * Parse a condition expression, resolving predicate calls.
- *
- * The Lean compiler outputs conditions like:
- *   { kind: "call", name: "isMaxUint", args: [{ kind: "param", name: "amount" }] }
- *
- * We need to resolve this to the actual expression by looking up the predicate
- * and substituting the argument.
- */
-function parseCondition(e: JsonExpr): Expr {
-  if (e.kind === "call") {
-    // For now, we return a placeholder. The actual resolution happens
-    // in resolvePredicates() after all functions are parsed.
-    return { kind: "eq", left: parseExpr(e.args[0]), right: { kind: "const", value: 0n } };
-  }
-  return parseExpr(e);
 }
 
 function parseParamType(t: string): ParamType {
@@ -158,7 +120,7 @@ function parseParamType(t: string): ParamType {
 export function loadIntentSpec(
   json: JsonSpec,
   address: string,
-  entry: { spec: string; deploy?: { symbol?: string; decimals?: number }; circuits?: Record<string, string> }
+  entry: EnsSpecEntry
 ): IntentSpec {
   const meta = entry.deploy;
   // First, extract constant values for predicate resolution

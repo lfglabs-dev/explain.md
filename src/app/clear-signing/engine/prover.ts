@@ -67,8 +67,8 @@ export type Groth16Proof = {
  *   ERC20.approve  → ERC20_approve
  */
 const CIRCUIT_REGISTRY: Record<string, string> = {
-  "USDC:transfer": "ERC20_transfer",
-  "USDC:approve": "ERC20_approve",
+  "ERC20:transfer": "ERC20_transfer",
+  "ERC20:approve": "ERC20_approve",
 };
 
 function getCircuitName(

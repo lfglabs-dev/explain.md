@@ -58,10 +58,15 @@ async function getResolverAddress(): Promise<string | null> {
   }
 }
 
+// ─── Cache ──────────────────────────────────────────────────────────────────
+
+const ensCache = new Map<string, { entry: EnsSpecEntry | null; ts: number }>();
+const CACHE_TTL_MS = 60_000; // 1 minute
+
 // ─── Read (public, no wallet needed) ────────────────────────────────────────
 
 /**
- * Read a spec entry from the ENS registry.
+ * Read a spec entry from the ENS registry (cached, 1min TTL).
  *
  * @param contractAddress - The contract address to look up
  * @returns The spec entry, or null if not registered
@@ -69,11 +74,18 @@ async function getResolverAddress(): Promise<string | null> {
 export async function readSpecFromEns(
   contractAddress: string
 ): Promise<EnsSpecEntry | null> {
+  const cacheKey = contractAddress.toLowerCase();
+  const cached = ensCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    return cached.entry;
+  }
+
   try {
     const provider = new ethers.JsonRpcProvider(MAINNET_RPC);
     const resolver = await provider.getResolver(ENS_NAME);
     if (!resolver) {
       console.log("[ENS] No resolver, skipping read for", contractAddress);
+      ensCache.set(cacheKey, { entry: null, ts: Date.now() });
       return null;
     }
 
@@ -82,13 +94,17 @@ export async function readSpecFromEns(
     const value = await resolver.getText(key);
     if (!value) {
       console.log("[ENS] No text record for", key);
+      ensCache.set(cacheKey, { entry: null, ts: Date.now() });
       return null;
     }
 
     console.log("[ENS] Found:", value);
-    return JSON.parse(value) as EnsSpecEntry;
+    const entry = JSON.parse(value) as EnsSpecEntry;
+    ensCache.set(cacheKey, { entry, ts: Date.now() });
+    return entry;
   } catch (e) {
     console.error("[ENS] Read error:", e);
+    ensCache.set(cacheKey, { entry: null, ts: Date.now() });
     return null;
   }
 }
