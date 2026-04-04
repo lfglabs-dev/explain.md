@@ -358,6 +358,18 @@ function SpecMatchStep({
               </div>
             </details>
           )}
+          <details className="mt-2">
+            <summary className="text-[13px] text-amber-600 cursor-pointer select-none hover:text-amber-700 transition-colors">
+              View trust assumption
+            </summary>
+            <p className="mt-2 text-[13px] leading-relaxed text-secondary">
+              In this proof of concept, the spec registry is hardcoded in the
+              frontend. In production, the registry would be maintained by the
+              wallet (e.g. MetaMask) and each spec entry would carry an approval
+              signature from the hardware wallet, establishing a chain of trust
+              from the spec author to the device that displays the intent.
+            </p>
+          </details>
         </>
       ) : (
         <p className="text-red-600">
@@ -617,7 +629,7 @@ function ProofStep({
                 </div>
               </div>
               <p className="text-[12px] text-secondary/70 mt-1.5">
-                Poseidon hashes over BN254&apos;s scalar field, binding the raw
+                Poseidon hashes over BLS12-381&apos;s scalar field, binding the raw
                 calldata and the evaluated intent to the proof. uint256 values are
                 split into two 128-bit limbs to fit the field.
               </p>
@@ -630,15 +642,15 @@ function ProofStep({
               </p>
               <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-1.5">
                 <div className="flex gap-2">
-                  <span className="text-secondary min-w-[150px]">selector</span>
+                  <span className="text-secondary min-w-[150px]">calldataCommitment</span>
                   <span className="break-all">{r.publicSignals[0]}</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-secondary min-w-[150px]">calldataCommitment</span>
+                  <span className="text-secondary min-w-[150px]">outputCommitment</span>
                   <span className="break-all">{r.publicSignals[1]}</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-secondary min-w-[150px]">outputCommitment</span>
+                  <span className="text-secondary min-w-[150px]">selector</span>
                   <span className="break-all">{r.publicSignals[2]}</span>
                 </div>
               </div>
@@ -677,7 +689,7 @@ function ProofStep({
                 </div>
               </div>
               <p className="text-[12px] text-secondary/70 mt-1.5">
-                BN254 (alt_bn128) curve. Three elliptic curve points encoding the
+                BLS12-381 curve. Three elliptic curve points encoding the
                 prover&apos;s knowledge of the witness satisfying the circuit constraints.
               </p>
             </div>
@@ -718,6 +730,19 @@ function ProofStep({
             {r.verifyTimeMs.toFixed(0)}ms
           </p>
         </div>
+
+        <details>
+          <summary className="text-[13px] text-amber-600 cursor-pointer select-none hover:text-amber-700 transition-colors">
+            View trust assumption
+          </summary>
+          <p className="mt-2 text-[13px] leading-relaxed text-secondary">
+            This proof only guarantees that the displayed template is correct
+            according to the specification the circuit was compiled from. The
+            natural language string itself is not inside the proof. For the
+            display to be trustworthy, the spec must come from the trusted
+            registry described in step 1.
+          </p>
+        </details>
       </div>
     </StepContainer>
   );
