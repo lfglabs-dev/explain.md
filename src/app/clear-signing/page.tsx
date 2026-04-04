@@ -584,17 +584,35 @@ function ProofStep({
               <p className="text-[13px] font-medium text-secondary mb-2">
                 Poseidon commitments
               </p>
-              <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-3">
+              <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-4">
                 <div>
-                  <div className="text-secondary text-[11px] mb-0.5">
+                  <div className="text-secondary text-[11px] mb-1">
                     calldataCommitment = Poseidon({r.calldataInputs.map((i) => i.name).join(", ")})
                   </div>
+                  <div className="space-y-0.5 mb-1.5 ml-2 text-[11px]">
+                    {r.calldataInputs.map((input) => (
+                      <div key={input.name} className="flex gap-2">
+                        <span className="text-secondary min-w-[100px]">{input.name}</span>
+                        <span className="break-all">{input.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-[11px] text-secondary/60">= </div>
                   <span className="break-all">{r.calldataCommitment}</span>
                 </div>
                 <div>
-                  <div className="text-secondary text-[11px] mb-0.5">
+                  <div className="text-secondary text-[11px] mb-1">
                     outputCommitment = Poseidon({r.outputInputs.map((i) => i.name).join(", ")})
                   </div>
+                  <div className="space-y-0.5 mb-1.5 ml-2 text-[11px]">
+                    {r.outputInputs.map((input) => (
+                      <div key={input.name} className="flex gap-2">
+                        <span className="text-secondary min-w-[100px]">{input.name}</span>
+                        <span className="break-all">{input.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-[11px] text-secondary/60">= </div>
                   <span className="break-all">{r.outputCommitment}</span>
                 </div>
               </div>
