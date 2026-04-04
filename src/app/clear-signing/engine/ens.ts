@@ -15,6 +15,7 @@
 import { ethers } from "ethers";
 
 export const ENS_NAME = "veryclear.eth";
+const MAINNET_RPC = "https://ethereum-rpc.publicnode.com";
 
 /** Metadata stored in ENS for each registered contract. */
 export type EnsSpecEntry = {
@@ -24,52 +25,65 @@ export type EnsSpecEntry = {
   symbol?: string;
 };
 
+// ─── Internals ──────────────────────────────────────────────────────────────
+
+/**
+ * Resolve the ENS resolver address for veryclear.eth from mainnet.
+ * Always queries mainnet regardless of the wallet's chain.
+ */
+async function getResolverAddress(): Promise<string | null> {
+  try {
+    const provider = new ethers.JsonRpcProvider(MAINNET_RPC);
+    console.log("[ENS] Querying resolver for", ENS_NAME, "via", MAINNET_RPC);
+    const resolver = await provider.getResolver(ENS_NAME);
+    if (!resolver) {
+      console.log("[ENS] No resolver found for", ENS_NAME);
+      return null;
+    }
+    console.log("[ENS] Resolver address:", resolver.address);
+    return resolver.address;
+  } catch (e) {
+    console.error("[ENS] Failed to get resolver:", e);
+    return null;
+  }
+}
+
 // ─── Read (public, no wallet needed) ────────────────────────────────────────
 
 /**
  * Read a spec entry from the ENS registry.
  *
  * @param contractAddress - The contract address to look up
- * @param rpcUrl - Ethereum RPC URL (defaults to public Cloudflare)
  * @returns The spec entry, or null if not registered
  */
 export async function readSpecFromEns(
-  contractAddress: string,
-  rpcUrl: string = "https://cloudflare-eth.com"
+  contractAddress: string
 ): Promise<EnsSpecEntry | null> {
   try {
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const provider = new ethers.JsonRpcProvider(MAINNET_RPC);
     const resolver = await provider.getResolver(ENS_NAME);
-    if (!resolver) return null;
+    if (!resolver) {
+      console.log("[ENS] No resolver, skipping read for", contractAddress);
+      return null;
+    }
 
     const key = contractAddress.toLowerCase();
+    console.log("[ENS] Reading text record:", key);
     const value = await resolver.getText(key);
-    if (!value) return null;
+    if (!value) {
+      console.log("[ENS] No text record for", key);
+      return null;
+    }
 
+    console.log("[ENS] Found:", value);
     return JSON.parse(value) as EnsSpecEntry;
-  } catch {
+  } catch (e) {
+    console.error("[ENS] Read error:", e);
     return null;
   }
 }
 
-/**
- * Read all known spec entries from ENS.
- * Queries a predefined list of contract addresses.
- */
-export async function readAllSpecsFromEns(
-  contractAddresses: string[],
-  rpcUrl?: string
-): Promise<Map<string, EnsSpecEntry>> {
-  const results = new Map<string, EnsSpecEntry>();
-  const promises = contractAddresses.map(async (addr) => {
-    const entry = await readSpecFromEns(addr, rpcUrl);
-    if (entry) results.set(addr.toLowerCase(), entry);
-  });
-  await Promise.all(promises);
-  return results;
-}
-
-// ─── Write (requires wallet) ────────────────────────────────────────────────
+// ─── Write (requires wallet on mainnet) ─────────────────────────────────────
 
 /**
  * Get a signer from the browser wallet (MetaMask etc.)
@@ -86,8 +100,8 @@ export async function connectWallet(): Promise<ethers.BrowserProvider> {
 /**
  * Set a spec entry in the ENS registry.
  *
- * Sends a setText transaction on the resolver for veryclear.eth.
- * The caller must be the owner/manager of the ENS name.
+ * Resolves veryclear.eth via a mainnet RPC to find the resolver contract,
+ * then sends the setText transaction through the user's wallet.
  *
  * @param provider - Connected browser provider with signer
  * @param contractAddress - The contract address to register
@@ -100,13 +114,29 @@ export async function writeSpecToEns(
   entry: EnsSpecEntry
 ): Promise<string> {
   const signer = await provider.getSigner();
-  const resolver = await provider.getResolver(ENS_NAME);
-  if (!resolver) {
-    throw new Error(`No resolver found for ${ENS_NAME}`);
+  const signerAddr = await signer.getAddress();
+  const network = await provider.getNetwork();
+  console.log("[ENS] Write: signer =", signerAddr, "chainId =", network.chainId.toString());
+
+  // Check chain
+  if (network.chainId !== 1n) {
+    throw new Error(
+      `Please switch to Ethereum Mainnet (current chain: ${network.chainId}). ` +
+      `ENS text records for ${ENS_NAME} live on mainnet.`
+    );
   }
 
-  // Get the resolver contract with signer
-  const resolverAddress = resolver.address;
+  // Get resolver address from mainnet RPC (reliable, doesn't depend on wallet's ENS support)
+  const resolverAddress = await getResolverAddress();
+  if (!resolverAddress) {
+    throw new Error(
+      `No resolver found for ${ENS_NAME}. ` +
+      `Make sure the ENS name is registered and has a resolver set.`
+    );
+  }
+
+  console.log("[ENS] Using resolver at", resolverAddress);
+
   const resolverAbi = [
     "function setText(bytes32 node, string key, string value) external",
   ];
@@ -120,8 +150,12 @@ export async function writeSpecToEns(
   const key = contractAddress.toLowerCase();
   const value = JSON.stringify(entry);
 
+  console.log("[ENS] setText:", { node, key, value: value.slice(0, 50) + "..." });
+
   const tx = await resolverContract.setText(node, key, value);
+  console.log("[ENS] TX sent:", tx.hash);
   await tx.wait();
+  console.log("[ENS] TX confirmed:", tx.hash);
 
   return tx.hash;
 }
@@ -134,12 +168,17 @@ export async function removeSpecFromEns(
   contractAddress: string
 ): Promise<string> {
   const signer = await provider.getSigner();
-  const resolver = await provider.getResolver(ENS_NAME);
-  if (!resolver) {
-    throw new Error(`No resolver found for ${ENS_NAME}`);
+  const network = await provider.getNetwork();
+
+  if (network.chainId !== 1n) {
+    throw new Error(`Please switch to Ethereum Mainnet (current chain: ${network.chainId}).`);
   }
 
-  const resolverAddress = resolver.address;
+  const resolverAddress = await getResolverAddress();
+  if (!resolverAddress) {
+    throw new Error(`No resolver found for ${ENS_NAME}.`);
+  }
+
   const resolverAbi = [
     "function setText(bytes32 node, string key, string value) external",
   ];
