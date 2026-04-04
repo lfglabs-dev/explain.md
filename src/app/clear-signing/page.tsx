@@ -368,7 +368,7 @@ function SpecMatchStep({
           )}
           <details className="mt-2">
             <summary className="text-[13px] text-emerald-600 cursor-pointer select-none hover:text-emerald-700 transition-colors">
-              Spec registry (ENS)
+              View trust assumption (spec registry)
             </summary>
             <p className="mt-2 text-[13px] leading-relaxed text-emerald-600">
               This lookup queries{" "}
