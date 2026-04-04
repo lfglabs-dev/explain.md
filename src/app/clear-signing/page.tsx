@@ -359,15 +359,16 @@ function SpecMatchStep({
             </details>
           )}
           <details className="mt-2">
-            <summary className="text-[13px] text-amber-600 cursor-pointer select-none hover:text-amber-700 transition-colors">
-              View trust assumption
+            <summary className="text-[13px] text-emerald-600 cursor-pointer select-none hover:text-emerald-700 transition-colors">
+              Spec registry (ENS)
             </summary>
-            <p className="mt-2 text-[13px] leading-relaxed text-amber-600">
-              In this proof of concept, the spec registry is hardcoded in the
-              frontend. In production, the registry would be maintained by the
-              wallet (e.g. MetaMask) and each spec entry would carry an approval
-              signature from the hardware wallet, establishing a chain of trust
-              from the spec author to the device that displays the intent.
+            <p className="mt-2 text-[13px] leading-relaxed text-emerald-600">
+              Specs are published to an ENS-based registry managed by the Verity
+              team, providing a verifiable on-chain source of truth. In
+              production, wallets (e.g. MetaMask) would maintain their own
+              registry with specs approved by the hardware wallet, establishing
+              a full chain of trust from spec author to display device. This PoC
+              uses the ENS registry directly.
             </p>
           </details>
         </>
