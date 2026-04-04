@@ -533,10 +533,9 @@ function ProofStep({
 }) {
   if (step.status === "unavailable") {
     return (
-      <StepContainer index={7} title="Proof generation" status="success">
+      <StepContainer index={7} title="Proof verification" status="success">
         <p className="text-secondary text-[13px]">
-          No compiled circuit available for this function (only ERC-20 transfer
-          and approve are compiled for this demo)
+          No compiled circuit available for this function
         </p>
       </StepContainer>
     );
@@ -544,7 +543,7 @@ function ProofStep({
 
   if (step.status === "pending") {
     return (
-      <StepContainer index={7} title="Proof generation" status="pending">
+      <StepContainer index={7} title="Proof verification" status="pending">
         <p className="text-secondary text-[13px]">
           Computing Poseidon commitments and generating Groth16 proof...
         </p>
@@ -554,7 +553,7 @@ function ProofStep({
 
   if (step.status === "error") {
     return (
-      <StepContainer index={7} title="Proof generation" status="error">
+      <StepContainer index={7} title="Proof verification" status="error">
         <p className="text-red-600 text-[13px]">{step.error}</p>
       </StepContainer>
     );
@@ -563,33 +562,65 @@ function ProofStep({
   const r = step.result!;
   return (
     <StepContainer index={7} title="Proof verification" status="success">
-      <div className="space-y-3">
-        <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-1.5">
-          <div>
-            <span className="text-secondary">calldataCommitment: </span>
-            <span className="break-all">
-              {r.calldataCommitment.slice(0, 20)}...
-            </span>
+      <div className="space-y-4">
+        {/* Public signals */}
+        <div>
+          <p className="text-[13px] font-medium text-secondary mb-2">
+            Public signals
+          </p>
+          <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-1.5">
+            <div className="flex gap-2">
+              <span className="text-secondary min-w-[150px]">selector</span>
+              <span className="break-all">{r.publicSignals[0]}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-secondary min-w-[150px]">calldataCommitment</span>
+              <span className="break-all">{r.calldataCommitment}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-secondary min-w-[150px]">outputCommitment</span>
+              <span className="break-all">{r.outputCommitment}</span>
+            </div>
           </div>
-          <div>
-            <span className="text-secondary">outputCommitment: </span>
-            <span className="break-all">
-              {r.outputCommitment.slice(0, 20)}...
-            </span>
-          </div>
-          <div>
-            <span className="text-secondary">proof: </span>
-            <span className="break-all">
-              {"\u03C0"}
-              {"_A"}[{r.proof.pi_a[0].slice(0, 12)}...],{" "}
-              {"\u03C0"}
-              {"_B"}[...],{" "}
-              {"\u03C0"}
-              {"_C"}[{r.proof.pi_c[0].slice(0, 12)}...]
-            </span>
-          </div>
+          <p className="text-[12px] text-secondary/70 mt-1.5">
+            Poseidon hashes binding the calldata and the evaluated template to the proof
+          </p>
         </div>
 
+        {/* Proof points */}
+        <div>
+          <p className="text-[13px] font-medium text-secondary mb-2">
+            Groth16 proof
+          </p>
+          <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[11px] space-y-2">
+            <div>
+              <span className="text-[#8B5CF6]">{"\u03C0_A"}</span>
+              <span className="text-secondary"> (G1): </span>
+              <span className="break-all text-secondary/80">
+                [{r.proof.pi_a[0].slice(0, 24)}..., {r.proof.pi_a[1].slice(0, 24)}...]
+              </span>
+            </div>
+            <div>
+              <span className="text-[#8B5CF6]">{"\u03C0_B"}</span>
+              <span className="text-secondary"> (G2): </span>
+              <span className="break-all text-secondary/80">
+                [[{r.proof.pi_b[0][0].slice(0, 16)}..., {r.proof.pi_b[0][1].slice(0, 16)}...], [{r.proof.pi_b[1][0].slice(0, 16)}..., {r.proof.pi_b[1][1].slice(0, 16)}...]]
+              </span>
+            </div>
+            <div>
+              <span className="text-[#8B5CF6]">{"\u03C0_C"}</span>
+              <span className="text-secondary"> (G1): </span>
+              <span className="break-all text-secondary/80">
+                [{r.proof.pi_c[0].slice(0, 24)}..., {r.proof.pi_c[1].slice(0, 24)}...]
+              </span>
+            </div>
+          </div>
+          <p className="text-[12px] text-secondary/70 mt-1.5">
+            BLS12-381, {r.proof.protocol} protocol
+          </p>
+        </div>
+
+        {/* Verification result */}
         <div
           className={`px-4 py-3 rounded-lg border-2 ${
             r.verified
@@ -604,11 +635,13 @@ function ProofStep({
               {r.verified ? "\u2713" : "\u2717"}
             </span>
             <span
-              className={`text-[14px] font-medium ${
+              className={`text-[14px] font-medium font-mono ${
                 r.verified ? "text-emerald-900" : "text-red-900"
               }`}
             >
-              {r.verified ? "Proof verified" : "Proof verification failed"}
+              {r.verified
+                ? "e(\u03C0\u2090, \u03C0\u1D47) = e(\u03B1, \u03B2) \u00B7 e(L, \u03B3) \u00B7 e(\u03C0\u1D9C, \u03B4)"
+                : "Verification failed"}
             </span>
           </div>
           <p
@@ -616,8 +649,9 @@ function ProofStep({
               r.verified ? "text-emerald-700/70" : "text-red-700/70"
             }`}
           >
-            Generated in {r.proveTimeMs.toFixed(0)}ms, verified in{" "}
-            {r.verifyTimeMs.toFixed(0)}ms (605 constraints, BN254)
+            {r.verified ? "Pairing check passed" : "Pairing check failed"}
+            {" \u2014 "}generated in {r.proveTimeMs.toFixed(0)}ms, verified in{" "}
+            {r.verifyTimeMs.toFixed(0)}ms
           </p>
         </div>
       </div>
@@ -628,17 +662,16 @@ function ProofStep({
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function ClearSigningPage() {
-  const [contractAddress, setContractAddress] = useState(DEMO_EXAMPLE.contractAddress);
-  const [calldata, setCalldata] = useState(DEMO_EXAMPLE.calldata);
+  const contractAddress = DEMO_EXAMPLE.contractAddress;
+  const calldata = DEMO_EXAMPLE.calldata;
   const [steps, setSteps] = useState<Step[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
   const [activeSpec, setActiveSpec] = useState<IntentSpec | null>(null);
   const abortRef = useRef(false);
 
   const interpret = useCallback(async () => {
     if (!contractAddress || !calldata) return;
     abortRef.current = false;
-    setIsRunning(true);
+
     setSteps([]);
     setActiveSpec(null);
 
@@ -664,7 +697,7 @@ export default function ClearSigningPage() {
       addStep({ kind: "spec-match", spec, address: contractAddress });
       if (spec) setActiveSpec(spec);
       if (!spec) {
-        setIsRunning(false);
+
         return;
       }
 
@@ -677,7 +710,7 @@ export default function ClearSigningPage() {
         ) ?? null;
       addStep({ kind: "function-id", binding, selector });
       if (!binding) {
-        setIsRunning(false);
+
         return;
       }
 
@@ -687,7 +720,7 @@ export default function ClearSigningPage() {
         (f) => f.name === binding!.intentFnName
       );
       if (!intentFn) {
-        setIsRunning(false);
+
         return;
       }
       params = decodeCalldata(calldata, intentFn, binding.paramMapping);
@@ -704,7 +737,7 @@ export default function ClearSigningPage() {
       await delay(500);
       emitted = evaluateIntent(spec, binding, params);
       if (!emitted) {
-        setIsRunning(false);
+
         return;
       }
       const allTemplates = collectAllTemplates(intentFn.body);
@@ -804,7 +837,7 @@ export default function ClearSigningPage() {
     } catch (e) {
       console.error("Interpretation error:", e);
     } finally {
-      setIsRunning(false);
+      // done
     }
   }, [contractAddress, calldata]);
 
