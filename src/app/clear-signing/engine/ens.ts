@@ -17,14 +17,21 @@ import { ethers } from "ethers";
 export const ENS_NAME = "veryclear.eth";
 const MAINNET_RPC = "https://ethereum-rpc.publicnode.com";
 
-/** Metadata stored in ENS for each registered contract. */
+/**
+ * ENS text record format for a registered contract.
+ *
+ * - spec: name of the compiled spec (matches a JSON file in /public/specs/)
+ * - deploy: per-address overrides (symbol, decimals differ per deployment
+ *   of the same spec, e.g. USDC vs USDT both use ERC20 spec)
+ * - circuits: SHA-256 hashes of verification keys, keyed by function name,
+ *   pinning the exact circuits compiled from this spec
+ */
 export type EnsSpecEntry = {
-  specName: string;
-  type: "token" | "protocol" | "contract" | "ens";
-  decimals?: number;
-  symbol?: string;
-  /** SHA-256 hashes of verification keys, keyed by function name.
-   *  Pins the exact circuit that was compiled from this spec. */
+  spec: string;
+  deploy?: {
+    symbol?: string;
+    decimals?: number;
+  };
   circuits?: Record<string, string>;
 };
 

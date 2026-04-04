@@ -125,16 +125,15 @@ export type Binding = {
  * decode any supported function call and produce a human-readable intent.
  */
 export type IntentSpec = {
-  /** Contract name (e.g. "USDC", "Uniswap V2 Router") */
+  /** Spec name from the compiler (e.g. "ERC20", "UniswapV2Router") */
   contractName: string;
-  /** Ethereum address (checksummed) */
+  /** Ethereum address this spec is deployed at */
   address: string;
-  /** Display category for the address */
-  type: "token" | "protocol" | "contract" | "ens";
-  /** Token decimals (only for tokens) */
-  decimals?: number;
-  /** Token symbol (only for tokens) */
-  symbol?: string;
+  /** Deployment overrides (symbol, decimals differ per deployment of same spec) */
+  deploy?: {
+    symbol?: string;
+    decimals?: number;
+  };
   /** Named constants used in conditions */
   constants: Record<string, bigint>;
   /** Intent function declarations */
@@ -176,13 +175,11 @@ export type EmittedTemplate = {
  */
 export type ResolvedAddress = {
   address: string;
-  /** Human-readable name from spec's contractName */
+  /** Display name: deploy.symbol if available, otherwise contractName */
   name: string;
-  /** Category from spec's type field */
-  type: "token" | "protocol" | "contract" | "ens";
-  /** Token decimals (only for tokens) */
+  /** Token decimals from deploy overrides */
   decimals?: number;
-  /** Token symbol (only for tokens) */
+  /** Token symbol from deploy overrides */
   symbol?: string;
 };
 

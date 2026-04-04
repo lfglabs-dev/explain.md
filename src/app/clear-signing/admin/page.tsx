@@ -20,24 +20,19 @@ const KNOWN_CONTRACTS = [
 
 const PRESET_SPECS: Record<string, EnsSpecEntry> = {
   "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": {
-    specName: "ERC20",
-    type: "token",
-    decimals: 6,
-    symbol: "USDC",
+    spec: "ERC20",
+    deploy: { symbol: "USDC", decimals: 6 },
     circuits: {
       transfer: "7a97aa1eb1a3aa3650a45efe1142ef01f45bf8c3b162c382c33f74bfd21d1435",
       approve: "dd2bcbb99a4830637a7ec903932d134e83d094cd2e51e6ffb38cd48e8251ef0f",
     },
   },
   "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D": {
-    specName: "UniswapV2Router",
-    type: "protocol",
+    spec: "UniswapV2Router",
   },
   "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
-    specName: "ERC20",
-    type: "token",
-    decimals: 18,
-    symbol: "WETH",
+    spec: "ERC20",
+    deploy: { symbol: "WETH", decimals: 18 },
   },
 };
 
@@ -54,7 +49,6 @@ export default function AdminPage() {
   // Custom entry form
   const [customAddr, setCustomAddr] = useState("");
   const [customSpecName, setCustomSpecName] = useState("ERC20");
-  const [customType, setCustomType] = useState<"token" | "protocol">("token");
   const [customDecimals, setCustomDecimals] = useState("18");
   const [customSymbol, setCustomSymbol] = useState("");
 
@@ -111,11 +105,12 @@ export default function AdminPage() {
   const handleWriteCustom = useCallback(async () => {
     if (!provider || !customAddr) return;
 
+    const deploy = (customDecimals || customSymbol)
+      ? { decimals: customDecimals ? parseInt(customDecimals) : undefined, symbol: customSymbol || undefined }
+      : undefined;
     const entry: EnsSpecEntry = {
-      specName: customSpecName,
-      type: customType,
-      decimals: customDecimals ? parseInt(customDecimals) : undefined,
-      symbol: customSymbol || undefined,
+      spec: customSpecName,
+      deploy,
     };
 
     setTxStatus(`Sending setText for ${customAddr.slice(0, 10)}...`);
@@ -126,7 +121,7 @@ export default function AdminPage() {
     } catch (e) {
       setTxStatus(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
-  }, [provider, customAddr, customSpecName, customType, customDecimals, customSymbol, refreshEntries]);
+  }, [provider, customAddr, customSpecName, customDecimals, customSymbol, refreshEntries]);
 
   return (
     <main className="font-serif max-w-[680px] mx-auto px-6 py-20 md:py-32">
@@ -253,19 +248,6 @@ export default function AdminPage() {
                 >
                   <option value="ERC20">ERC20</option>
                   <option value="UniswapV2Router">UniswapV2Router</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[12px] text-secondary mb-1">
-                  Type
-                </label>
-                <select
-                  value={customType}
-                  onChange={(e) => setCustomType(e.target.value as "token" | "protocol")}
-                  className="w-full text-[13px] px-3 py-2 border border-border rounded bg-white"
-                >
-                  <option value="token">token</option>
-                  <option value="protocol">protocol</option>
                 </select>
               </div>
             </div>

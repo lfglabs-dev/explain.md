@@ -153,13 +153,14 @@ function parseParamType(t: string): ParamType {
  *
  * @param json - The raw JSON from the Verity compiler
  * @param address - Contract address (not in the Lean spec, added per-deployment)
- * @param meta - Additional metadata (type, decimals, symbol)
+ * @param entry - ENS registry entry with deploy overrides
  */
 export function loadIntentSpec(
   json: JsonSpec,
   address: string,
-  meta: { type: "token" | "protocol" | "contract" | "ens"; decimals?: number; symbol?: string }
+  entry: { spec: string; deploy?: { symbol?: string; decimals?: number }; circuits?: Record<string, string> }
 ): IntentSpec {
+  const meta = entry.deploy;
   // First, extract constant values for predicate resolution
   const constantValues = new Map<string, bigint>();
   for (const c of json.constants) {
@@ -201,9 +202,7 @@ export function loadIntentSpec(
   return {
     contractName: json.contractName,
     address,
-    type: meta.type,
-    decimals: meta.decimals,
-    symbol: meta.symbol,
+    deploy: meta ? { symbol: meta.symbol, decimals: meta.decimals } : undefined,
     constants: Object.fromEntries(constantValues),
     fns,
     bindings,

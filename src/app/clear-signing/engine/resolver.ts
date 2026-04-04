@@ -33,10 +33,9 @@ export function resolveAddress(address: string): ResolvedAddress | null {
   if (!spec) return null;
   return {
     address: spec.address,
-    name: spec.contractName,
-    type: spec.type,
-    decimals: spec.decimals,
-    symbol: spec.symbol,
+    name: spec.deploy?.symbol ?? spec.contractName,
+    decimals: spec.deploy?.decimals,
+    symbol: spec.deploy?.symbol,
   };
 }
 
