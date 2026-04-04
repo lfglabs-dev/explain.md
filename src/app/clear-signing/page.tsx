@@ -510,6 +510,7 @@ export default function ClearSigningPage() {
   const abortRef = useRef(false);
 
   const loadExample = useCallback((example: Example) => {
+    abortRef.current = true; // Cancel any running interpretation
     setContractAddress(example.contractAddress);
     setCalldata(example.calldata);
     setSteps([]);
