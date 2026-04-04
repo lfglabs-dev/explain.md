@@ -15,7 +15,7 @@ import {
   generateAndVerifyProof,
   type ProofResult,
 } from "./engine/prover";
-import { EXAMPLES, type Example } from "./engine/examples";
+import { DEMO_EXAMPLE } from "./engine/examples";
 import type {
   IntentSpec,
   Binding,
@@ -25,7 +25,6 @@ import type {
   Template,
   ResolvedAddress,
   ParamType,
-  Stmt,
 } from "./engine/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -43,7 +42,7 @@ type Step =
       allTemplates: Template[];
     }
   | {
-      kind: "address-resolution";
+      kind: "spec-resolution";
       resolutions: Map<string, ResolvedAddress | null>;
       pending: Set<string>;
     }
@@ -116,50 +115,177 @@ function renderIntent(
   return text;
 }
 
-// ─── DSL Pretty-Print ───────────────────────────────────────────────────────
+// ─── Lean DSL Sources ───────────────────���───────────────────────────────────
+// Matches verity/Contracts/*/Display.lean from github.com/lfglabs-dev/verity
 
-function specToString(spec: IntentSpec): string {
-  const lines: string[] = [];
-  lines.push(`intent_spec "${spec.contractName}" where`);
+const LEAN_SOURCES: Record<string, string> = {
+  USDC: `import Verity.Intent.DSL
 
-  for (const [name, value] of Object.entries(spec.constants)) {
-    lines.push(
-      `  const ${name} := ${value === 2n ** 256n - 1n ? "(2^256 - 1)" : value.toString()}`
+namespace Contracts.USDC
+open Verity.Intent.DSL
+
+private def maxUint256 : Int := (2 ^ 256 : Nat) - 1
+
+intent_spec "USDC" where
+  const decimals := 6
+
+  intent transfer(to : address, amount : uint256) where
+    when amount == maxUint256 =>
+      emit "Send all USDC to {to}"
+    otherwise =>
+      emit "Send {amount:fixed decimals} USDC to {to}"
+
+  intent approve(spender : address, amount : uint256) where
+    when amount == maxUint256 =>
+      emit "Approve {spender} to spend unlimited USDC"
+    otherwise =>
+      emit "Approve {spender} to spend {amount:fixed decimals} USDC"
+
+  intent transferFrom(from : address, to : address, amount : uint256) where
+    when amount == maxUint256 =>
+      emit "Transfer all USDC from {from} to {to}"
+    otherwise =>
+      emit "Transfer {amount:fixed decimals} USDC from {from} to {to}"
+
+end Contracts.USDC`,
+
+  UniswapV2Router: `import Verity.Intent.DSL
+
+namespace Contracts.UniswapV2Router
+open Verity.Intent.DSL
+
+intent_spec "UniswapV2Router" where
+  intent swapExactETHForTokens(amountOutMin : uint256, to : address) where
+    emit "Swap ETH for at least {amountOutMin} {tokenOut}, send to {to}"
+
+end Contracts.UniswapV2Router`,
+};
+
+// ─── DSL Syntax Highlighting ────────────────────────────────────────────────
+
+function HighlightedDSL({ source }: { source: string }) {
+  const lines = source.split("\n");
+  return (
+    <pre className="bg-surface border border-border rounded px-5 py-4 text-sm font-mono leading-relaxed overflow-x-auto">
+      {lines.map((line, i) => (
+        <div key={i}>{highlightLine(line)}</div>
+      ))}
+    </pre>
+  );
+}
+
+function highlightLine(line: string): React.ReactNode {
+  if (line.trim() === "") return "\u00A0";
+
+  const tokens: React.ReactNode[] = [];
+  let rest = line;
+  let key = 0;
+
+  const keywords = /^(\s*)(import|namespace|open|private|def|end|intent_spec|intent|const|predicate|when|otherwise|emit|bind|where)\b/;
+  const match = rest.match(keywords);
+  if (match) {
+    tokens.push(match[1]); // leading whitespace
+    tokens.push(
+      <span key={key++} className="text-[#8B5CF6]">
+        {match[2]}
+      </span>
     );
+    rest = rest.slice(match[0].length);
   }
 
-  if (spec.constants.MAX_UINT256 !== undefined) {
-    lines.push("");
-    lines.push(`  predicate isMaxUint(v : uint256) :=`);
-    lines.push(`    v == MAX_UINT256`);
-  }
-
-  for (const fn of spec.fns) {
-    lines.push("");
-    const params = fn.params
-      .filter((p) => p.name !== "deadline")
-      .map((p) => `${p.name} : ${p.type}`)
-      .join(", ");
-    lines.push(`  intent ${fn.name}(${params}) where`);
-
-    function renderStmts(stmts: Stmt[], indent: number) {
-      for (const stmt of stmts) {
-        const pad = " ".repeat(indent);
-        if (stmt.kind === "emit") {
-          lines.push(`${pad}emit "${stmt.template.text}"`);
-        } else if (stmt.kind === "when") {
-          lines.push(`${pad}when isMaxUint(amount) =>`);
-          renderStmts(stmt.then, indent + 2);
-          lines.push(`${pad}otherwise =>`);
-          renderStmts(stmt.otherwise, indent + 2);
-        }
-      }
+  // Process remaining text token by token
+  while (rest.length > 0) {
+    // String literals
+    const strMatch = rest.match(/^"([^"]*)"/);
+    if (strMatch) {
+      tokens.push(
+        <span key={key++} className="text-[#059669]">
+          &quot;{strMatch[1]}&quot;
+        </span>
+      );
+      rest = rest.slice(strMatch[0].length);
+      continue;
     }
 
-    renderStmts(fn.body, 4);
+    // Type annotations after colon
+    const typeMatch = rest.match(
+      /^(: )(uint256|address|uint256\[\]|address\[\]|bool|Int|Nat)\b/
+    );
+    if (typeMatch) {
+      tokens.push(typeMatch[1]);
+      tokens.push(
+        <span key={key++} className="text-[#D97706]">
+          {typeMatch[2]}
+        </span>
+      );
+      rest = rest.slice(typeMatch[0].length);
+      continue;
+    }
+
+    // Operators
+    const opMatch = rest.match(/^(:=|=>|==|\^)/);
+    if (opMatch) {
+      tokens.push(
+        <span key={key++} className="text-secondary">
+          {opMatch[1]}
+        </span>
+      );
+      rest = rest.slice(opMatch[0].length);
+      continue;
+    }
+
+    // Numbers
+    const numMatch = rest.match(/^\b(\d+)\b/);
+    if (numMatch) {
+      tokens.push(
+        <span key={key++} className="text-[#2563EB]">
+          {numMatch[1]}
+        </span>
+      );
+      rest = rest.slice(numMatch[0].length);
+      continue;
+    }
+
+    // Default: consume one character
+    tokens.push(rest[0]);
+    rest = rest.slice(1);
   }
 
-  return lines.join("\n");
+  return <>{tokens}</>;
+}
+
+const SPEC_SOURCES = [
+  { name: "USDC", file: "Contracts/USDC/Display.lean" },
+  { name: "UniswapV2Router", file: "Contracts/UniswapV2Router/Display.lean" },
+];
+
+function SpecsLibrary() {
+  const [selected, setSelected] = useState(0);
+  const { name, file } = SPEC_SOURCES[selected];
+
+  return (
+    <Disclosure title="Specs library" className="mb-16">
+      <div className="flex gap-2 mb-4">
+        {SPEC_SOURCES.map((s, i) => (
+          <button
+            key={s.name}
+            onClick={() => setSelected(i)}
+            className={`px-3 py-1.5 text-[13px] font-mono border rounded transition-colors cursor-pointer ${
+              i === selected
+                ? "border-primary bg-primary/5 font-medium"
+                : "border-border hover:bg-surface"
+            }`}
+          >
+            {s.name}
+          </button>
+        ))}
+      </div>
+      <p className="text-secondary text-[12px] font-mono mb-3">
+        {file}
+      </p>
+      <HighlightedDSL key={name} source={LEAN_SOURCES[name]} />
+    </Disclosure>
+  );
 }
 
 // ─── Step Components ────────────────────────────────────────────────────────
@@ -208,7 +334,7 @@ function SpecMatchStep({
   return (
     <StepContainer
       index={1}
-      title="Spec matching"
+      title="Spec lookup"
       status={step.spec ? "success" : "error"}
     >
       {step.spec ? (
@@ -222,14 +348,14 @@ function SpecMatchStep({
             <strong className="font-semibold">{step.spec.contractName}</strong>{" "}
             spec
           </p>
-          {spec && (
+          {spec && LEAN_SOURCES[spec.contractName] && (
             <details className="mt-2">
               <summary className="text-[13px] text-secondary cursor-pointer select-none hover:text-foreground transition-colors">
                 View spec definition
               </summary>
-              <pre className="mt-2 bg-surface border border-border rounded px-4 py-3 text-[12px] font-mono leading-relaxed overflow-x-auto">
-                {specToString(spec)}
-              </pre>
+              <div className="mt-2 text-[12px]">
+                <HighlightedDSL source={LEAN_SOURCES[spec.contractName]} />
+              </div>
             </details>
           )}
         </>
@@ -326,16 +452,16 @@ function IntentEvalStep({
   );
 }
 
-function AddressResolutionStep({
+function SpecResolutionStep({
   step,
 }: {
-  step: Extract<Step, { kind: "address-resolution" }>;
+  step: Extract<Step, { kind: "spec-resolution" }>;
 }) {
   const entries = Array.from(step.resolutions.entries());
   if (entries.length === 0) {
     return (
-      <StepContainer index={5} title="Address resolution" status="success">
-        <p className="text-secondary">No addresses to resolve</p>
+      <StepContainer index={5} title="External specifications resolution" status="success">
+        <p className="text-secondary">No external specs to resolve</p>
       </StepContainer>
     );
   }
@@ -345,7 +471,7 @@ function AddressResolutionStep({
   return (
     <StepContainer
       index={5}
-      title="Address resolution"
+      title="External specifications resolution"
       status={allDone ? "success" : "pending"}
     >
       <div className="space-y-1.5">
@@ -362,14 +488,14 @@ function AddressResolutionStep({
               <span className="text-secondary">{"\u2192"}</span>
               {isPending ? (
                 <span className="text-secondary animate-pulse">
-                  resolving...
+                  looking up spec...
                 </span>
               ) : resolved ? (
                 <span className="text-emerald-700 font-semibold">
                   {resolved.name}
                 </span>
               ) : (
-                <span className="text-amber-600">unknown</span>
+                <span className="text-amber-600">no spec</span>
               )}
             </div>
           );
@@ -491,7 +617,7 @@ function ProofStep({
             }`}
           >
             Generated in {r.proveTimeMs.toFixed(0)}ms, verified in{" "}
-            {r.verifyTimeMs.toFixed(0)}ms (605 constraints, BN254 curve)
+            {r.verifyTimeMs.toFixed(0)}ms (605 constraints, BN254)
           </p>
         </div>
       </div>
@@ -502,20 +628,12 @@ function ProofStep({
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function ClearSigningPage() {
-  const [contractAddress, setContractAddress] = useState("");
-  const [calldata, setCalldata] = useState("");
+  const [contractAddress, setContractAddress] = useState(DEMO_EXAMPLE.contractAddress);
+  const [calldata, setCalldata] = useState(DEMO_EXAMPLE.calldata);
   const [steps, setSteps] = useState<Step[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [activeSpec, setActiveSpec] = useState<IntentSpec | null>(null);
   const abortRef = useRef(false);
-
-  const loadExample = useCallback((example: Example) => {
-    abortRef.current = true; // Cancel any running interpretation
-    setContractAddress(example.contractAddress);
-    setCalldata(example.calldata);
-    setSteps([]);
-    setActiveSpec(null);
-  }, []);
 
   const interpret = useCallback(async () => {
     if (!contractAddress || !calldata) return;
@@ -540,7 +658,7 @@ export default function ClearSigningPage() {
     let addresses: string[] = [];
 
     try {
-      // Step 1: Spec matching
+      // Step 1: Spec lookup
       await delay(300);
       spec = findSpec(contractAddress);
       addStep({ kind: "spec-match", spec, address: contractAddress });
@@ -592,7 +710,7 @@ export default function ClearSigningPage() {
       const allTemplates = collectAllTemplates(intentFn.body);
       addStep({ kind: "intent-eval", emitted, allTemplates });
 
-      // Step 5: Address resolution (progressive)
+      // Step 5: External specifications resolution (progressive)
       addresses = collectAddresses(emitted.holes);
       if (addresses.length > 0) {
         await delay(300);
@@ -601,7 +719,7 @@ export default function ClearSigningPage() {
         for (const addr of addresses) {
           resolutions.set(addr.toLowerCase(), null);
         }
-        addStep({ kind: "address-resolution", resolutions, pending });
+        addStep({ kind: "spec-resolution", resolutions, pending });
 
         for (const addr of addresses) {
           if (abortRef.current) break;
@@ -618,11 +736,11 @@ export default function ClearSigningPage() {
           setSteps((prev) => {
             const updated = [...prev];
             const idx = updated.findIndex(
-              (s) => s.kind === "address-resolution"
+              (s) => s.kind === "spec-resolution"
             );
             if (idx >= 0) {
               updated[idx] = {
-                kind: "address-resolution",
+                kind: "spec-resolution",
                 resolutions: new Map(newResolutions),
                 pending: new Set(newPending),
               };
@@ -713,24 +831,27 @@ export default function ClearSigningPage() {
         <p>
           When you sign an Ethereum transaction, your wallet shows you raw
           calldata, a hex blob that means nothing to a human. Clear signing
-          translates this into a sentence you can read and verify.
+          translates this intent into natural language. But that translation is
+          a new thing to trust. We propose an extension of the Verity DSL
+          allowing to formalize natural language interpretation of user intents
+          within the protocol specifications.
         </p>
         <p>
-          The translation is not just a best-effort label. It is derived from a{" "}
+          The compiler produces two artifacts from each{" "}
           <ExternalLink href="https://github.com/lfglabs-dev/verity/pull/1677">
-            formally defined intent spec
-          </ExternalLink>{" "}
-          and proven correct with a Groth16 zero-knowledge proof. The proof
-          guarantees: <em>this sentence is a valid interpretation of this
-          calldata according to this spec</em>.
+            spec
+          </ExternalLink>
+          : a JSON descriptor that any frontend can load to interpret calldata
+          as natural language, and a Groth16 circuit that allows even an
+          embedded device to verify the interpretation is correct.
         </p>
       </section>
 
-      <Disclosure title="How it works" className="mb-16">
+      <Disclosure title="How it works" className="mb-3">
         <ol className="list-decimal list-inside space-y-2 text-[15px] leading-relaxed">
           <li>
-            <strong className="font-medium">Spec matching</strong>: the
-            contract address is matched to a known intent specification
+            <strong className="font-medium">Spec lookup</strong>: the
+            contract address is looked up in the specs library
           </li>
           <li>
             <strong className="font-medium">Function identification</strong>:
@@ -745,8 +866,8 @@ export default function ClearSigningPage() {
             DSL program selects a template and fills its holes
           </li>
           <li>
-            <strong className="font-medium">Address resolution</strong>:
-            raw addresses are resolved to known names
+            <strong className="font-medium">External specifications resolution</strong>:
+            addresses in the template are matched against other specs in the registry
           </li>
           <li>
             <strong className="font-medium">Verified display</strong>: the
@@ -759,55 +880,16 @@ export default function ClearSigningPage() {
         </ol>
       </Disclosure>
 
+      <SpecsLibrary />
+
       <section className="mb-16">
-        <h2 className="text-lg font-semibold tracking-tight mb-4">
-          Try it
+        <h2 className="text-lg font-semibold tracking-tight mb-2">
+          Demo
         </h2>
-
-        <div className="flex flex-wrap gap-2 mb-6">
-          {EXAMPLES.map((example) => (
-            <button
-              key={example.label}
-              onClick={() => loadExample(example)}
-              className="px-3 py-1.5 text-[13px] font-mono border border-border rounded hover:bg-surface transition-colors cursor-pointer"
-              title={example.description}
-            >
-              {example.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-4 mb-8">
-          <div>
-            <label className="block text-[13px] font-medium text-secondary mb-1.5">
-              Contract address
-            </label>
-            <input
-              type="text"
-              value={contractAddress}
-              onChange={(e) => setContractAddress(e.target.value)}
-              placeholder="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-              className="w-full font-mono text-[13px] px-4 py-2.5 border border-border rounded bg-white focus:outline-none focus:border-foreground/30 transition-colors"
-              spellCheck={false}
-            />
-          </div>
-          <div>
-            <label className="block text-[13px] font-medium text-secondary mb-1.5">
-              Calldata{" "}
-              <span className="font-normal text-secondary/60">
-                (selector + encoded params)
-              </span>
-            </label>
-            <textarea
-              value={calldata}
-              onChange={(e) => setCalldata(e.target.value)}
-              placeholder="0xa9059cbb000000000000000000000000..."
-              rows={3}
-              className="w-full font-mono text-[13px] px-4 py-2.5 border border-border rounded bg-white focus:outline-none focus:border-foreground/30 transition-colors resize-none break-all"
-              spellCheck={false}
-            />
-          </div>
-        </div>
+        <p className="text-secondary text-[15px] leading-relaxed mb-6">
+          {DEMO_EXAMPLE.description}: interpreting raw calldata through the
+          full pipeline, from spec lookup to Groth16 proof verification.
+        </p>
 
         {steps.length > 0 && (
           <div className="border border-border rounded-lg px-6 py-5">
@@ -823,8 +905,8 @@ export default function ClearSigningPage() {
                   return <CalldataDecodeStep key={i} step={step} />;
                 case "intent-eval":
                   return <IntentEvalStep key={i} step={step} />;
-                case "address-resolution":
-                  return <AddressResolutionStep key={i} step={step} />;
+                case "spec-resolution":
+                  return <SpecResolutionStep key={i} step={step} />;
                 case "verified-display":
                   return <VerifiedDisplayStep key={i} step={step} />;
                 case "proof":

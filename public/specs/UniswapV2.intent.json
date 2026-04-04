@@ -2,15 +2,15 @@
   "contractName": "UniswapV2Router",
   "fns": [
     {
-      "name": "swapExactTokensForTokens",
+      "name": "swapExactETHForTokens",
       "params": [
-        {
-          "name": "amountIn",
-          "type": "uint256"
-        },
         {
           "name": "amountOutMin",
           "type": "uint256"
+        },
+        {
+          "name": "path",
+          "type": "address[]"
         },
         {
           "name": "to",
@@ -22,20 +22,18 @@
         {
           "kind": "emit",
           "template": {
-            "text": "Swap {amountIn} for at least {amountOutMin}, send to {to}",
+            "text": "Swap ETH for at least {amountOutMin} {tokenOut}, send to {to}",
             "holes": [
-              {
-                "name": "amountIn",
-                "format": {
-                  "kind": "tokenAmount",
-                  "decimals": 18
-                }
-              },
               {
                 "name": "amountOutMin",
                 "format": {
-                  "kind": "tokenAmount",
-                  "decimals": 6
+                  "kind": "raw"
+                }
+              },
+              {
+                "name": "tokenOut",
+                "format": {
+                  "kind": "address"
                 }
               },
               {
@@ -54,12 +52,11 @@
   "constants": [],
   "bindings": [
     {
-      "functionName": "swapExactTokensForTokens",
-      "intentFnName": "swapExactTokensForTokens",
-      "selector": "0x38ed1739",
-      "abiSignature": "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+      "functionName": "swapExactETHForTokens",
+      "intentFnName": "swapExactETHForTokens",
+      "selector": "0x7ff36ab5",
+      "abiSignature": "swapExactETHForTokens(uint256,address[],address,uint256)",
       "paramMapping": [
-        "amountIn",
         "amountOutMin",
         "path",
         "to",

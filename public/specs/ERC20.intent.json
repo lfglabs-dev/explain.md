@@ -1,5 +1,5 @@
 {
-  "contractName": "ERC20",
+  "contractName": "USDC",
   "fns": [
     {
       "name": "isMaxUint",
@@ -53,7 +53,7 @@
             {
               "kind": "emit",
               "template": {
-                "text": "Send all tokens to {to}",
+                "text": "Send all USDC to {to}",
                 "holes": [
                   {
                     "name": "to",
@@ -69,13 +69,13 @@
             {
               "kind": "emit",
               "template": {
-                "text": "Send {amount} tokens to {to}",
+                "text": "Send {amount} USDC to {to}",
                 "holes": [
                   {
                     "name": "amount",
                     "format": {
                       "kind": "tokenAmount",
-                      "decimals": 18
+                      "decimals": 6
                     }
                   },
                   {
@@ -122,7 +122,7 @@
             {
               "kind": "emit",
               "template": {
-                "text": "Approve {spender} to spend unlimited tokens",
+                "text": "Approve {spender} to spend unlimited USDC",
                 "holes": [
                   {
                     "name": "spender",
@@ -138,7 +138,7 @@
             {
               "kind": "emit",
               "template": {
-                "text": "Approve {spender} to spend {amount} tokens",
+                "text": "Approve {spender} to spend {amount} USDC",
                 "holes": [
                   {
                     "name": "spender",
@@ -150,7 +150,7 @@
                     "name": "amount",
                     "format": {
                       "kind": "tokenAmount",
-                      "decimals": 18
+                      "decimals": 6
                     }
                   }
                 ]
@@ -165,7 +165,7 @@
       "name": "transferFrom",
       "params": [
         {
-          "name": "fromAddr",
+          "name": "from",
           "type": "address"
         },
         {
@@ -195,10 +195,10 @@
             {
               "kind": "emit",
               "template": {
-                "text": "Transfer all tokens from {fromAddr} to {to}",
+                "text": "Transfer all USDC from {from} to {to}",
                 "holes": [
                   {
-                    "name": "fromAddr",
+                    "name": "from",
                     "format": {
                       "kind": "address"
                     }
@@ -217,17 +217,17 @@
             {
               "kind": "emit",
               "template": {
-                "text": "Transfer {amount} tokens from {fromAddr} to {to}",
+                "text": "Transfer {amount} USDC from {from} to {to}",
                 "holes": [
                   {
                     "name": "amount",
                     "format": {
                       "kind": "tokenAmount",
-                      "decimals": 18
+                      "decimals": 6
                     }
                   },
                   {
-                    "name": "fromAddr",
+                    "name": "from",
                     "format": {
                       "kind": "address"
                     }
@@ -283,7 +283,7 @@
       "selector": "0x23b872dd",
       "abiSignature": "transferFrom(address,address,uint256)",
       "paramMapping": [
-        "fromAddr",
+        "from",
         "to",
         "amount"
       ]

@@ -213,7 +213,7 @@ export type InterpretationStep =
       allTemplates: Template[];
     }
   | {
-      kind: "address-resolution";
+      kind: "spec-resolution";
       resolutions: {
         address: string;
         resolved: ResolvedAddress | null;

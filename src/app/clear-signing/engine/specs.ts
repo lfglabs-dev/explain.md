@@ -43,22 +43,12 @@ export const WETH_SPEC: IntentSpec = {
   bindings: [],
 };
 
-export const VITALIK_SPEC: IntentSpec = {
-  contractName: "vitalik.eth",
-  address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-  type: "ens",
-  constants: {},
-  fns: [],
-  bindings: [],
-};
-
 // ─── Registry ────────────────────────────────────────────────────────────────
 
 export const SPECS: Record<string, IntentSpec> = {
   [USDC_SPEC.address.toLowerCase()]: USDC_SPEC,
   [UNISWAP_V2_SPEC.address.toLowerCase()]: UNISWAP_V2_SPEC,
   [WETH_SPEC.address.toLowerCase()]: WETH_SPEC,
-  [VITALIK_SPEC.address.toLowerCase()]: VITALIK_SPEC,
 };
 
 export function findSpec(contractAddress: string): IntentSpec | null {
