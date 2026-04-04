@@ -129,6 +129,12 @@ export type IntentSpec = {
   contractName: string;
   /** Ethereum address (checksummed) */
   address: string;
+  /** Display category for the address */
+  type: "token" | "protocol" | "contract" | "ens";
+  /** Token decimals (only for tokens) */
+  decimals?: number;
+  /** Token symbol (only for tokens) */
+  symbol?: string;
   /** Named constants used in conditions */
   constants: Record<string, bigint>;
   /** Intent function declarations */
@@ -164,12 +170,15 @@ export type EmittedTemplate = {
 
 // ─── Address Resolution ─────────────────────────────────────────────────────
 
-/** A known address with metadata for display resolution. */
-export type KnownAddress = {
+/**
+ * Resolved address info, derived from IntentSpec metadata.
+ * No separate registry needed — all address info comes from specs.
+ */
+export type ResolvedAddress = {
   address: string;
-  /** Human-readable name (e.g. "USDC", "Uniswap V2 Router") */
+  /** Human-readable name from spec's contractName */
   name: string;
-  /** Category for display styling */
+  /** Category from spec's type field */
   type: "token" | "protocol" | "contract" | "ens";
   /** Token decimals (only for tokens) */
   decimals?: number;
@@ -207,7 +216,7 @@ export type InterpretationStep =
       kind: "address-resolution";
       resolutions: {
         address: string;
-        resolved: KnownAddress | null;
+        resolved: ResolvedAddress | null;
         pending: boolean;
       }[];
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { ExternalLink, CodeBlock } from "../components";
+import { ExternalLink, Disclosure } from "../components";
 import { findSpec } from "./engine/specs";
 import { extractSelector, decodeCalldata } from "./engine/decoder";
 import { evaluateIntent, collectAllTemplates } from "./engine/evaluator";
@@ -10,6 +10,11 @@ import {
   formatAddress,
   formatTokenAmount,
 } from "./engine/resolver";
+import {
+  hasCircuit,
+  generateAndVerifyProof,
+  type ProofResult,
+} from "./engine/prover";
 import { EXAMPLES, type Example } from "./engine/examples";
 import type {
   IntentSpec,
@@ -18,8 +23,9 @@ import type {
   ResolvedHole,
   Value,
   Template,
-  KnownAddress,
+  ResolvedAddress,
   ParamType,
+  Stmt,
 } from "./engine/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -38,14 +44,19 @@ type Step =
     }
   | {
       kind: "address-resolution";
-      resolutions: Map<string, KnownAddress | null>;
+      resolutions: Map<string, ResolvedAddress | null>;
       pending: Set<string>;
     }
-  | { kind: "verified-display"; text: string };
+  | { kind: "verified-display"; text: string }
+  | {
+      kind: "proof";
+      status: "pending" | "success" | "error" | "unavailable";
+      result: ProofResult | null;
+      error?: string;
+    };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-/** Format a Value for display (raw, before address resolution). */
 function formatValue(value: Value): string {
   switch (value.kind) {
     case "int":
@@ -59,7 +70,6 @@ function formatValue(value: Value): string {
   }
 }
 
-/** Collect all address values from resolved holes. */
 function collectAddresses(holes: ResolvedHole[]): string[] {
   const addrs: string[] = [];
   for (const hole of holes) {
@@ -70,10 +80,9 @@ function collectAddresses(holes: ResolvedHole[]): string[] {
   return addrs;
 }
 
-/** Render the final intent string with resolved names and formatted amounts. */
 function renderIntent(
   emitted: EmittedTemplate,
-  resolutions: Map<string, KnownAddress | null>
+  resolutions: Map<string, ResolvedAddress | null>
 ): string {
   let text = emitted.text;
   for (const hole of emitted.holes) {
@@ -105,6 +114,52 @@ function renderIntent(
     text = text.replace(placeholder, display);
   }
   return text;
+}
+
+// ─── DSL Pretty-Print ───────────────────────────────────────────────────────
+
+function specToString(spec: IntentSpec): string {
+  const lines: string[] = [];
+  lines.push(`intent_spec "${spec.contractName}" where`);
+
+  for (const [name, value] of Object.entries(spec.constants)) {
+    lines.push(
+      `  const ${name} := ${value === 2n ** 256n - 1n ? "(2^256 - 1)" : value.toString()}`
+    );
+  }
+
+  if (spec.constants.MAX_UINT256 !== undefined) {
+    lines.push("");
+    lines.push(`  predicate isMaxUint(v : uint256) :=`);
+    lines.push(`    v == MAX_UINT256`);
+  }
+
+  for (const fn of spec.fns) {
+    lines.push("");
+    const params = fn.params
+      .filter((p) => p.name !== "deadline")
+      .map((p) => `${p.name} : ${p.type}`)
+      .join(", ");
+    lines.push(`  intent ${fn.name}(${params}) where`);
+
+    function renderStmts(stmts: Stmt[], indent: number) {
+      for (const stmt of stmts) {
+        const pad = " ".repeat(indent);
+        if (stmt.kind === "emit") {
+          lines.push(`${pad}emit "${stmt.template.text}"`);
+        } else if (stmt.kind === "when") {
+          lines.push(`${pad}when isMaxUint(amount) =>`);
+          renderStmts(stmt.then, indent + 2);
+          lines.push(`${pad}otherwise =>`);
+          renderStmts(stmt.otherwise, indent + 2);
+        }
+      }
+    }
+
+    renderStmts(fn.body, 4);
+  }
+
+  return lines.join("\n");
 }
 
 // ─── Step Components ────────────────────────────────────────────────────────
@@ -145,8 +200,10 @@ function StepContainer({
 
 function SpecMatchStep({
   step,
+  spec,
 }: {
   step: Extract<Step, { kind: "spec-match" }>;
+  spec: IntentSpec | null;
 }) {
   return (
     <StepContainer
@@ -155,15 +212,27 @@ function SpecMatchStep({
       status={step.spec ? "success" : "error"}
     >
       {step.spec ? (
-        <p>
-          Contract{" "}
-          <span className="font-mono text-[13px]">
-            {step.address.slice(0, 6)}...{step.address.slice(-4)}
-          </span>{" "}
-          matches{" "}
-          <strong className="font-semibold">{step.spec.contractName}</strong>{" "}
-          spec
-        </p>
+        <>
+          <p>
+            Contract{" "}
+            <span className="font-mono text-[13px]">
+              {step.address.slice(0, 6)}...{step.address.slice(-4)}
+            </span>{" "}
+            matches{" "}
+            <strong className="font-semibold">{step.spec.contractName}</strong>{" "}
+            spec
+          </p>
+          {spec && (
+            <details className="mt-2">
+              <summary className="text-[13px] text-secondary cursor-pointer select-none hover:text-foreground transition-colors">
+                View spec definition
+              </summary>
+              <pre className="mt-2 bg-surface border border-border rounded px-4 py-3 text-[12px] font-mono leading-relaxed overflow-x-auto">
+                {specToString(spec)}
+              </pre>
+            </details>
+          )}
+        </>
       ) : (
         <p className="text-red-600">
           No spec found for{" "}
@@ -189,7 +258,7 @@ function FunctionIdStep({
         <p>
           Selector{" "}
           <span className="font-mono text-[13px]">{step.selector}</span>
-          {" → "}
+          {" \u2192 "}
           <span className="font-mono text-[13px]">
             {step.binding.abiSignature}
           </span>
@@ -290,7 +359,7 @@ function AddressResolutionStep({
               <span className="text-secondary">
                 {addr.slice(0, 6)}...{addr.slice(-4)}
               </span>
-              <span className="text-secondary">→</span>
+              <span className="text-secondary">{"\u2192"}</span>
               {isPending ? (
                 <span className="text-secondary animate-pulse">
                   resolving...
@@ -326,66 +395,113 @@ function VerifiedDisplayStep({
             {step.text}
           </p>
         </div>
-        <p className="text-[12px] text-emerald-700/70 mt-2 ml-6">
-          Intent verified by Groth16 proof: template and values match the
-          calldata commitment
-        </p>
       </div>
     </StepContainer>
   );
 }
 
-// ─── DSL Display ────────────────────────────────────────────────────────────
-
-function DslDisplay({ spec }: { spec: IntentSpec }) {
-  const lines: string[] = [];
-  lines.push(`intent_spec "${spec.contractName}" where`);
-
-  for (const [name, value] of Object.entries(spec.constants)) {
-    lines.push(`  const ${name} := ${value === 2n ** 256n - 1n ? "(2^256 - 1)" : value.toString()}`);
+function ProofStep({
+  step,
+}: {
+  step: Extract<Step, { kind: "proof" }>;
+}) {
+  if (step.status === "unavailable") {
+    return (
+      <StepContainer index={7} title="Proof generation" status="success">
+        <p className="text-secondary text-[13px]">
+          No compiled circuit available for this function (only ERC-20 transfer
+          and approve are compiled for this demo)
+        </p>
+      </StepContainer>
+    );
   }
 
-  if (Object.keys(spec.constants).length > 0) {
-    // Check for MAX_UINT256 predicate pattern
-    if (spec.constants.MAX_UINT256 !== undefined) {
-      lines.push("");
-      lines.push(`  predicate isMaxUint(v : uint256) :=`);
-      lines.push(`    v == MAX_UINT256`);
-    }
+  if (step.status === "pending") {
+    return (
+      <StepContainer index={7} title="Proof generation" status="pending">
+        <p className="text-secondary text-[13px]">
+          Computing Poseidon commitments and generating Groth16 proof...
+        </p>
+      </StepContainer>
+    );
   }
 
-  for (const fn of spec.fns) {
-    lines.push("");
-    const params = fn.params
-      .filter(p => p.name !== "deadline") // Skip noise params
-      .map((p) => `${p.name} : ${p.type}`)
-      .join(", ");
-    lines.push(`  intent ${fn.name}(${params}) where`);
-
-    function renderStmts(stmts: typeof fn.body, indent: number) {
-      for (const stmt of stmts) {
-        const pad = " ".repeat(indent);
-        if (stmt.kind === "emit") {
-          lines.push(`${pad}emit "${stmt.template.text}"`);
-        } else if (stmt.kind === "when") {
-          lines.push(`${pad}when isMaxUint(amount) =>`);
-          renderStmts(stmt.then, indent + 2);
-          lines.push(`${pad}otherwise =>`);
-          renderStmts(stmt.otherwise, indent + 2);
-        }
-      }
-    }
-
-    renderStmts(fn.body, 4);
+  if (step.status === "error") {
+    return (
+      <StepContainer index={7} title="Proof generation" status="error">
+        <p className="text-red-600 text-[13px]">{step.error}</p>
+      </StepContainer>
+    );
   }
 
-  return <CodeBlock>{lines.join("\n")}</CodeBlock>;
+  const r = step.result!;
+  return (
+    <StepContainer index={7} title="Proof verification" status="success">
+      <div className="space-y-3">
+        <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-1.5">
+          <div>
+            <span className="text-secondary">calldataCommitment: </span>
+            <span className="break-all">
+              {r.calldataCommitment.slice(0, 20)}...
+            </span>
+          </div>
+          <div>
+            <span className="text-secondary">outputCommitment: </span>
+            <span className="break-all">
+              {r.outputCommitment.slice(0, 20)}...
+            </span>
+          </div>
+          <div>
+            <span className="text-secondary">proof: </span>
+            <span className="break-all">
+              {"\u03C0"}
+              {"_A"}[{r.proof.pi_a[0].slice(0, 12)}...],{" "}
+              {"\u03C0"}
+              {"_B"}[...],{" "}
+              {"\u03C0"}
+              {"_C"}[{r.proof.pi_c[0].slice(0, 12)}...]
+            </span>
+          </div>
+        </div>
+
+        <div
+          className={`px-4 py-3 rounded-lg border-2 ${
+            r.verified
+              ? "border-emerald-300 bg-emerald-50"
+              : "border-red-300 bg-red-50"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-lg ${r.verified ? "text-emerald-600" : "text-red-500"}`}
+            >
+              {r.verified ? "\u2713" : "\u2717"}
+            </span>
+            <span
+              className={`text-[14px] font-medium ${
+                r.verified ? "text-emerald-900" : "text-red-900"
+              }`}
+            >
+              {r.verified ? "Proof verified" : "Proof verification failed"}
+            </span>
+          </div>
+          <p
+            className={`text-[12px] mt-1 ml-7 ${
+              r.verified ? "text-emerald-700/70" : "text-red-700/70"
+            }`}
+          >
+            Generated in {r.proveTimeMs.toFixed(0)}ms, verified in{" "}
+            {r.verifyTimeMs.toFixed(0)}ms (605 constraints, BN254 curve)
+          </p>
+        </div>
+      </div>
+    </StepContainer>
+  );
 }
 
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function ClearSigningPage() {
-  // ── Input state ──
   const [contractAddress, setContractAddress] = useState("");
   const [calldata, setCalldata] = useState("");
   const [steps, setSteps] = useState<Step[]>([]);
@@ -393,7 +509,6 @@ export default function ClearSigningPage() {
   const [activeSpec, setActiveSpec] = useState<IntentSpec | null>(null);
   const abortRef = useRef(false);
 
-  // ── Load an example ──
   const loadExample = useCallback((example: Example) => {
     setContractAddress(example.contractAddress);
     setCalldata(example.calldata);
@@ -401,7 +516,6 @@ export default function ClearSigningPage() {
     setActiveSpec(null);
   }, []);
 
-  // ── Run interpretation ──
   const interpret = useCallback(async () => {
     if (!contractAddress || !calldata) return;
     abortRef.current = false;
@@ -417,10 +531,17 @@ export default function ClearSigningPage() {
     const delay = (ms: number) =>
       new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+    // We'll need these across steps
+    let spec: IntentSpec | null = null;
+    let binding: Binding | null = null;
+    let params: Map<string, Value> = new Map();
+    let emitted: EmittedTemplate | null = null;
+    let addresses: string[] = [];
+
     try {
       // Step 1: Spec matching
       await delay(300);
-      const spec = findSpec(contractAddress);
+      spec = findSpec(contractAddress);
       addStep({ kind: "spec-match", spec, address: contractAddress });
       if (spec) setActiveSpec(spec);
       if (!spec) {
@@ -431,10 +552,11 @@ export default function ClearSigningPage() {
       // Step 2: Function identification
       await delay(400);
       const selector = extractSelector(calldata);
-      const binding = spec.bindings.find(
-        (b) => b.selector.toLowerCase() === selector.toLowerCase()
-      );
-      addStep({ kind: "function-id", binding: binding ?? null, selector });
+      binding =
+        spec.bindings.find(
+          (b) => b.selector.toLowerCase() === selector.toLowerCase()
+        ) ?? null;
+      addStep({ kind: "function-id", binding, selector });
       if (!binding) {
         setIsRunning(false);
         return;
@@ -443,23 +565,25 @@ export default function ClearSigningPage() {
       // Step 3: Calldata decoding
       await delay(400);
       const intentFn = spec.fns.find(
-        (f) => f.name === binding.intentFnName
+        (f) => f.name === binding!.intentFnName
       );
       if (!intentFn) {
         setIsRunning(false);
         return;
       }
-      const params = decodeCalldata(calldata, intentFn, binding.paramMapping);
+      params = decodeCalldata(calldata, intentFn, binding.paramMapping);
       const paramsList = Array.from(params.entries()).map(([name, value]) => ({
         name,
-        type: intentFn.params.find((p) => p.name === name)?.type ?? ("uint256" as ParamType),
+        type:
+          intentFn.params.find((p) => p.name === name)?.type ??
+          ("uint256" as ParamType),
         value,
       }));
       addStep({ kind: "calldata-decode", params: paramsList });
 
       // Step 4: Intent evaluation
       await delay(500);
-      const emitted = evaluateIntent(spec, binding, params);
+      emitted = evaluateIntent(spec, binding, params);
       if (!emitted) {
         setIsRunning(false);
         return;
@@ -468,23 +592,24 @@ export default function ClearSigningPage() {
       addStep({ kind: "intent-eval", emitted, allTemplates });
 
       // Step 5: Address resolution (progressive)
-      const addresses = collectAddresses(emitted.holes);
+      addresses = collectAddresses(emitted.holes);
       if (addresses.length > 0) {
         await delay(300);
-        const resolutions = new Map<string, KnownAddress | null>();
+        const resolutions = new Map<string, ResolvedAddress | null>();
         const pending = new Set(addresses.map((a) => a.toLowerCase()));
         for (const addr of addresses) {
           resolutions.set(addr.toLowerCase(), null);
         }
         addStep({ kind: "address-resolution", resolutions, pending });
 
-        // Resolve each address progressively
         for (const addr of addresses) {
           if (abortRef.current) break;
-          const resolved = await resolveAddressAsync(addr, 500 + Math.random() * 400);
+          const resolved = await resolveAddressAsync(
+            addr,
+            500 + Math.random() * 400
+          );
           const newResolutions = new Map(resolutions);
           newResolutions.set(addr.toLowerCase(), resolved);
-          // Update the source maps for next iteration
           resolutions.set(addr.toLowerCase(), resolved);
           const newPending = new Set(pending);
           newPending.delete(addr.toLowerCase());
@@ -508,22 +633,55 @@ export default function ClearSigningPage() {
 
       // Step 6: Verified display
       await delay(400);
-      const resMap = new Map<string, KnownAddress | null>();
-      for (const addr of addresses) {
-        const stepData = steps.find((s) => s.kind === "address-resolution");
-        if (stepData && stepData.kind === "address-resolution") {
-          const resolved = stepData.resolutions.get(addr.toLowerCase());
-          if (resolved !== undefined) resMap.set(addr.toLowerCase(), resolved);
-        }
-      }
-      // Re-resolve synchronously for the final text
-      const finalResolutions = new Map<string, KnownAddress | null>();
+      const finalResolutions = new Map<string, ResolvedAddress | null>();
       for (const addr of addresses) {
         const { resolveAddress } = await import("./engine/resolver");
         finalResolutions.set(addr.toLowerCase(), resolveAddress(addr));
       }
       const finalText = renderIntent(emitted, finalResolutions);
       addStep({ kind: "verified-display", text: finalText });
+
+      // Step 7: Proof generation & verification
+      if (!hasCircuit(spec.contractName, binding.intentFnName)) {
+        addStep({
+          kind: "proof",
+          status: "unavailable",
+          result: null,
+        });
+      } else {
+        addStep({ kind: "proof", status: "pending", result: null });
+
+        try {
+          const result = await generateAndVerifyProof(
+            spec.contractName,
+            binding,
+            params,
+            emitted
+          );
+          setSteps((prev) => {
+            const updated = [...prev];
+            const idx = updated.findIndex((s) => s.kind === "proof");
+            if (idx >= 0) {
+              updated[idx] = { kind: "proof", status: "success", result };
+            }
+            return updated;
+          });
+        } catch (e) {
+          setSteps((prev) => {
+            const updated = [...prev];
+            const idx = updated.findIndex((s) => s.kind === "proof");
+            if (idx >= 0) {
+              updated[idx] = {
+                kind: "proof",
+                status: "error",
+                result: null,
+                error: e instanceof Error ? e.message : String(e),
+              };
+            }
+            return updated;
+          });
+        }
+      }
     } catch (e) {
       console.error("Interpretation error:", e);
     } finally {
@@ -540,7 +698,6 @@ export default function ClearSigningPage() {
       calldata !== prevCalldataRef.current
     ) {
       prevCalldataRef.current = calldata;
-      // Small delay to let state settle
       const timer = setTimeout(() => interpret(), 100);
       return () => clearTimeout(timer);
     }
@@ -548,7 +705,6 @@ export default function ClearSigningPage() {
 
   return (
     <main className="font-serif max-w-[680px] mx-auto px-6 py-20 md:py-32">
-      {/* ── Header ── */}
       <header className="mb-16">
         <h1 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
           Clear Signing
@@ -559,7 +715,6 @@ export default function ClearSigningPage() {
         </p>
       </header>
 
-      {/* ── Explanation ── */}
       <section className="mb-16 leading-relaxed space-y-4">
         <p>
           When you sign an Ethereum transaction, your wallet shows you raw
@@ -577,71 +732,44 @@ export default function ClearSigningPage() {
         </p>
       </section>
 
-      {/* ── How it works ── */}
-      <section className="mb-16">
-        <h2 className="text-lg font-semibold tracking-tight mb-4">
-          How it works
-        </h2>
-        <div className="leading-relaxed space-y-4 text-[15px]">
-          <ol className="list-decimal list-inside space-y-2">
-            <li>
-              <strong className="font-medium">Spec matching</strong>: the
-              contract address is matched to a known intent specification
-              (USDC, Uniswap, etc.)
-            </li>
-            <li>
-              <strong className="font-medium">Function identification</strong>:
-              the 4-byte selector identifies which function is being called
-            </li>
-            <li>
-              <strong className="font-medium">Calldata decoding</strong>: raw
-              bytes are decoded into typed parameters using the ABI
-            </li>
-            <li>
-              <strong className="font-medium">Intent evaluation</strong>: the
-              DSL program selects a template and fills its holes with parameter
-              values
-            </li>
-            <li>
-              <strong className="font-medium">Address resolution</strong>:
-              raw addresses are progressively resolved to known names (tokens,
-              ENS, protocols)
-            </li>
-            <li>
-              <strong className="font-medium">Verified display</strong>: the
-              final sentence is displayed with a proof that it matches the
-              calldata commitment
-            </li>
-          </ol>
-        </div>
-      </section>
+      <Disclosure title="How it works" className="mb-16">
+        <ol className="list-decimal list-inside space-y-2 text-[15px] leading-relaxed">
+          <li>
+            <strong className="font-medium">Spec matching</strong>: the
+            contract address is matched to a known intent specification
+          </li>
+          <li>
+            <strong className="font-medium">Function identification</strong>:
+            the 4-byte selector identifies which function is being called
+          </li>
+          <li>
+            <strong className="font-medium">Calldata decoding</strong>: raw
+            bytes are decoded into typed parameters using the ABI
+          </li>
+          <li>
+            <strong className="font-medium">Intent evaluation</strong>: the
+            DSL program selects a template and fills its holes
+          </li>
+          <li>
+            <strong className="font-medium">Address resolution</strong>:
+            raw addresses are resolved to known names
+          </li>
+          <li>
+            <strong className="font-medium">Verified display</strong>: the
+            final sentence is shown
+          </li>
+          <li>
+            <strong className="font-medium">Proof generation</strong>: a
+            Groth16 proof is generated and verified in your browser
+          </li>
+        </ol>
+      </Disclosure>
 
-      {/* ── Active Spec Display ── */}
-      {activeSpec && (
-        <section className="mb-16">
-          <h2 className="text-lg font-semibold tracking-tight mb-4">
-            Loaded spec: {activeSpec.contractName}
-          </h2>
-          <p className="text-[15px] text-secondary mb-4 leading-relaxed">
-            The intent DSL definition that governs how this contract&apos;s
-            transactions are interpreted. This is the TypeScript equivalent of
-            the{" "}
-            <ExternalLink href="https://github.com/lfglabs-dev/verity/pull/1677">
-              Lean definition
-            </ExternalLink>{" "}
-            in Verity.
-          </p>
-          <DslDisplay spec={activeSpec} />
-        </section>
-      )}
-
-      {/* ── Demo ── */}
       <section className="mb-16">
         <h2 className="text-lg font-semibold tracking-tight mb-4">
           Try it
         </h2>
 
-        {/* Preset examples */}
         <div className="flex flex-wrap gap-2 mb-6">
           {EXAMPLES.map((example) => (
             <button
@@ -655,7 +783,6 @@ export default function ClearSigningPage() {
           ))}
         </div>
 
-        {/* Input fields */}
         <div className="space-y-4 mb-8">
           <div>
             <label className="block text-[13px] font-medium text-secondary mb-1.5">
@@ -695,13 +822,14 @@ export default function ClearSigningPage() {
           </button>
         </div>
 
-        {/* Steps output */}
         {steps.length > 0 && (
           <div className="border border-border rounded-lg px-6 py-5">
             {steps.map((step, i) => {
               switch (step.kind) {
                 case "spec-match":
-                  return <SpecMatchStep key={i} step={step} />;
+                  return (
+                    <SpecMatchStep key={i} step={step} spec={activeSpec} />
+                  );
                 case "function-id":
                   return <FunctionIdStep key={i} step={step} />;
                 case "calldata-decode":
@@ -712,57 +840,14 @@ export default function ClearSigningPage() {
                   return <AddressResolutionStep key={i} step={step} />;
                 case "verified-display":
                   return <VerifiedDisplayStep key={i} step={step} />;
+                case "proof":
+                  return <ProofStep key={i} step={step} />;
               }
             })}
           </div>
         )}
       </section>
 
-      {/* ── Verification ── */}
-      <section className="mb-16">
-        <h2 className="text-lg font-semibold tracking-tight mb-4">
-          Proof verification
-        </h2>
-        <div className="leading-relaxed space-y-4 text-[15px]">
-          <p>
-            The clear signing process is not just template matching. It is backed
-            by a Groth16 zero-knowledge proof. The proof guarantees:
-          </p>
-          <div className="border border-border rounded px-6 py-5 space-y-3 text-[14px]">
-            <div>
-              <strong className="font-medium">Calldata commitment:</strong>{" "}
-              <span className="text-secondary">
-                Poseidon(selector, params...) = calldataHash
-              </span>
-            </div>
-            <div>
-              <strong className="font-medium">Output commitment:</strong>{" "}
-              <span className="text-secondary">
-                Poseidon(templateId, holes...) = outputHash
-              </span>
-            </div>
-            <div>
-              <strong className="font-medium">Circuit proves:</strong>{" "}
-              <span className="text-secondary">
-                The DSL program, given these params, produces exactly this
-                template with these hole values
-              </span>
-            </div>
-          </div>
-          <p>
-            The circuit is compiled from the same Lean DSL definition shown
-            above. A Circom circuit of ~600 constraints is generated for each
-            function, and the Groth16 proof can be verified on-chain for ~200K
-            gas.
-          </p>
-          <p className="text-secondary text-[14px]">
-            Proof size: 128 bytes. Constraint counts: ERC-20 transfer ~605,
-            approve ~605, transferFrom ~653.
-          </p>
-        </div>
-      </section>
-
-      {/* ── Footer ── */}
       <footer className="mt-12 pt-8 border-t border-border">
         <p className="text-secondary text-sm">
           Part of the{" "}

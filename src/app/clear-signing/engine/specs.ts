@@ -39,6 +39,9 @@ const MAX_UINT256 = 2n ** 256n - 1n;
 export const USDC_SPEC: IntentSpec = {
   contractName: "USDC",
   address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  type: "token",
+  decimals: 6,
+  symbol: "USDC",
   constants: { MAX_UINT256 },
   fns: [
     // ── transfer ──
@@ -173,6 +176,7 @@ export const USDC_SPEC: IntentSpec = {
 export const UNISWAP_V2_SPEC: IntentSpec = {
   contractName: "Uniswap V2 Router",
   address: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+  type: "protocol",
   constants: {},
   fns: [
     // ── swapExactTokensForTokens ──
@@ -244,12 +248,45 @@ export const UNISWAP_V2_SPEC: IntentSpec = {
   ],
 };
 
+// ─── WETH (Wrapped Ether) ──────────────────────────────────────────────────
+
+/**
+ * WETH address-only spec — no intent functions, just address metadata
+ * for display resolution in swap paths.
+ */
+export const WETH_SPEC: IntentSpec = {
+  contractName: "WETH",
+  address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+  type: "token",
+  decimals: 18,
+  symbol: "WETH",
+  constants: {},
+  fns: [],
+  bindings: [],
+};
+
+// ─── vitalik.eth ───────────────────────────────────────────────────────────
+
+/**
+ * vitalik.eth address-only spec — well-known ENS name for demo purposes.
+ */
+export const VITALIK_SPEC: IntentSpec = {
+  contractName: "vitalik.eth",
+  address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+  type: "ens",
+  constants: {},
+  fns: [],
+  bindings: [],
+};
+
 // ─── Spec Registry ──────────────────────────────────────────────────────────
 
 /** All supported specs, keyed by lowercase contract address. */
 export const SPECS: Record<string, IntentSpec> = {
   [USDC_SPEC.address.toLowerCase()]: USDC_SPEC,
   [UNISWAP_V2_SPEC.address.toLowerCase()]: UNISWAP_V2_SPEC,
+  [WETH_SPEC.address.toLowerCase()]: WETH_SPEC,
+  [VITALIK_SPEC.address.toLowerCase()]: VITALIK_SPEC,
 };
 
 /** Find a spec by contract address (case-insensitive). */

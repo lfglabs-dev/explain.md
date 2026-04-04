@@ -15,7 +15,10 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "explain.md — Verity",
+  title: {
+    template: "explain.md — %s",
+    default: "explain.md",
+  },
   description:
     "Formal proofs and verified smart contract properties, explained.",
 };
