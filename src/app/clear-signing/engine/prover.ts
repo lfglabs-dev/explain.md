@@ -29,6 +29,10 @@ export type ProofResult = {
   calldataCommitment: string;
   /** Poseidon(templateId, holes...) */
   outputCommitment: string;
+  /** Named inputs to the calldata Poseidon hash */
+  calldataInputs: { name: string; value: string }[];
+  /** Named inputs to the output Poseidon hash */
+  outputInputs: { name: string; value: string }[];
   /** The Groth16 proof object */
   proof: Groth16Proof;
   /** Public signals: [selector, calldataCommitment, outputCommitment] */
@@ -102,11 +106,17 @@ function splitUint256(value: bigint): [bigint, bigint] {
  *
  * @see verity/scripts/test_circom_e2e.sh — compute_inputs.js
  */
+type WitnessResult = {
+  witness: Record<string, string>;
+  calldataInputs: { name: string; value: string }[];
+  outputInputs: { name: string; value: string }[];
+};
+
 async function buildWitnessInput(
   binding: Binding,
   params: Map<string, Value>,
   emitted: EmittedTemplate
-): Promise<Record<string, string>> {
+): Promise<WitnessResult> {
   // Dynamic import of circomlibjs (heavy, only load when needed)
   const { buildPoseidon } = await import("circomlibjs");
   const poseidon = await buildPoseidon();
@@ -119,6 +129,9 @@ async function buildWitnessInput(
   // Build the list of signal values for the calldata commitment
   // Order: selector, then each param in binding order
   const cdInputs: bigint[] = [selectorInt];
+  const cdNamed: { name: string; value: string }[] = [
+    { name: "selector", value: selectorInt.toString() },
+  ];
   const witnessFields: Record<string, string> = {};
 
   for (const paramName of binding.paramMapping) {
@@ -128,15 +141,19 @@ async function buildWitnessInput(
     if (value.kind === "int") {
       const [lo, hi] = splitUint256(value.value);
       cdInputs.push(lo, hi);
+      cdNamed.push({ name: `${paramName}_lo`, value: lo.toString() });
+      cdNamed.push({ name: `${paramName}_hi`, value: hi.toString() });
       witnessFields[`${paramName}_lo`] = lo.toString();
       witnessFields[`${paramName}_hi`] = hi.toString();
     } else if (value.kind === "address") {
       const addrInt = BigInt(value.value);
       cdInputs.push(addrInt);
+      cdNamed.push({ name: paramName, value: addrInt.toString() });
       witnessFields[paramName] = addrInt.toString();
     } else if (value.kind === "bool") {
       const boolInt = value.value ? 1n : 0n;
       cdInputs.push(boolInt);
+      cdNamed.push({ name: paramName, value: boolInt.toString() });
       witnessFields[paramName] = boolInt.toString();
     }
   }
@@ -156,6 +173,9 @@ async function buildWitnessInput(
   // We use the binding's parameter order which matches the circuit signals.
   const templateId = BigInt(emitted.templateIndex);
   const outInputs: bigint[] = [templateId];
+  const outNamed: { name: string; value: string }[] = [
+    { name: "templateId", value: templateId.toString() },
+  ];
 
   // Use parameter order from binding (matches circuit signal declaration order)
   for (const paramName of binding.paramMapping) {
@@ -165,10 +185,15 @@ async function buildWitnessInput(
     if (value.kind === "int") {
       const [lo, hi] = splitUint256(value.value);
       outInputs.push(lo, hi);
+      outNamed.push({ name: `${paramName}_lo`, value: lo.toString() });
+      outNamed.push({ name: `${paramName}_hi`, value: hi.toString() });
     } else if (value.kind === "address") {
-      outInputs.push(BigInt(value.value));
+      const addrInt = BigInt(value.value);
+      outInputs.push(addrInt);
+      outNamed.push({ name: paramName, value: addrInt.toString() });
     } else if (value.kind === "bool") {
       outInputs.push(value.value ? 1n : 0n);
+      outNamed.push({ name: paramName, value: (value.value ? 1n : 0n).toString() });
     }
   }
 
@@ -176,10 +201,14 @@ async function buildWitnessInput(
   const outHash = F.toObject(poseidon(outInputs));
 
   return {
-    selector: selectorInt.toString(),
-    calldataCommitment: cdHash.toString(),
-    outputCommitment: outHash.toString(),
-    ...witnessFields,
+    witness: {
+      selector: selectorInt.toString(),
+      calldataCommitment: cdHash.toString(),
+      outputCommitment: outHash.toString(),
+      ...witnessFields,
+    },
+    calldataInputs: cdNamed,
+    outputInputs: outNamed,
   };
 }
 
@@ -226,7 +255,7 @@ export async function generateAndVerifyProof(
   const snarkjs = await import("snarkjs");
 
   // Build witness input with Poseidon commitments
-  const input = await buildWitnessInput(binding, params, emitted);
+  const { witness, calldataInputs, outputInputs } = await buildWitnessInput(binding, params, emitted);
 
   // Circuit artifact paths (served from /public)
   const wasmPath = `/circuits/${circuitName}/circuit.wasm`;
@@ -236,7 +265,7 @@ export async function generateAndVerifyProof(
   // Generate proof
   const proveStart = performance.now();
   const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-    input,
+    witness,
     wasmPath,
     zkeyPath
   );
@@ -250,8 +279,10 @@ export async function generateAndVerifyProof(
   const verifyTimeMs = performance.now() - verifyStart;
 
   return {
-    calldataCommitment: input.calldataCommitment,
-    outputCommitment: input.outputCommitment,
+    calldataCommitment: witness.calldataCommitment,
+    outputCommitment: witness.outputCommitment,
+    calldataInputs,
+    outputInputs,
     proof: proof as Groth16Proof,
     publicSignals,
     verified,

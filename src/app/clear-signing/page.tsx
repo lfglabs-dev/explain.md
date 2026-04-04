@@ -563,62 +563,108 @@ function ProofStep({
   return (
     <StepContainer index={7} title="Proof verification" status="success">
       <div className="space-y-4">
-        {/* Public signals */}
-        <div>
-          <p className="text-[13px] font-medium text-secondary mb-2">
-            Public signals
-          </p>
-          <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-1.5">
-            <div className="flex gap-2">
-              <span className="text-secondary min-w-[150px]">selector</span>
-              <span className="break-all">{r.publicSignals[0]}</span>
+        <details className="group/proof">
+          <summary className="text-[13px] text-secondary cursor-pointer select-none hover:text-foreground transition-colors flex items-center gap-1.5">
+            <svg
+              viewBox="0 0 24 24"
+              className="w-3.5 h-3.5 transition-transform group-open/proof:rotate-90"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+            Proof details
+          </summary>
+          <div className="mt-3 space-y-4">
+            {/* Commitments */}
+            <div>
+              <p className="text-[13px] font-medium text-secondary mb-2">
+                Poseidon commitments
+              </p>
+              <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-3">
+                <div>
+                  <div className="text-secondary text-[11px] mb-0.5">
+                    calldataCommitment = Poseidon({r.calldataInputs.map((i) => i.name).join(", ")})
+                  </div>
+                  <span className="break-all">{r.calldataCommitment}</span>
+                </div>
+                <div>
+                  <div className="text-secondary text-[11px] mb-0.5">
+                    outputCommitment = Poseidon({r.outputInputs.map((i) => i.name).join(", ")})
+                  </div>
+                  <span className="break-all">{r.outputCommitment}</span>
+                </div>
+              </div>
+              <p className="text-[12px] text-secondary/70 mt-1.5">
+                Poseidon hashes over BN254&apos;s scalar field, binding the raw
+                calldata and the evaluated intent to the proof. uint256 values are
+                split into two 128-bit limbs to fit the field.
+              </p>
             </div>
-            <div className="flex gap-2">
-              <span className="text-secondary min-w-[150px]">calldataCommitment</span>
-              <span className="break-all">{r.calldataCommitment}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="text-secondary min-w-[150px]">outputCommitment</span>
-              <span className="break-all">{r.outputCommitment}</span>
-            </div>
-          </div>
-          <p className="text-[12px] text-secondary/70 mt-1.5">
-            Poseidon hashes binding the calldata and the evaluated template to the proof
-          </p>
-        </div>
 
-        {/* Proof points */}
-        <div>
-          <p className="text-[13px] font-medium text-secondary mb-2">
-            Groth16 proof
-          </p>
-          <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[11px] space-y-2">
+            {/* Public signals */}
             <div>
-              <span className="text-[#8B5CF6]">{"\u03C0_A"}</span>
-              <span className="text-secondary"> (G1): </span>
-              <span className="break-all text-secondary/80">
-                [{r.proof.pi_a[0].slice(0, 24)}..., {r.proof.pi_a[1].slice(0, 24)}...]
-              </span>
+              <p className="text-[13px] font-medium text-secondary mb-2">
+                Public signals
+              </p>
+              <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-1.5">
+                <div className="flex gap-2">
+                  <span className="text-secondary min-w-[150px]">selector</span>
+                  <span className="break-all">{r.publicSignals[0]}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-secondary min-w-[150px]">calldataCommitment</span>
+                  <span className="break-all">{r.publicSignals[1]}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-secondary min-w-[150px]">outputCommitment</span>
+                  <span className="break-all">{r.publicSignals[2]}</span>
+                </div>
+              </div>
+              <p className="text-[12px] text-secondary/70 mt-1.5">
+                The three values exposed by the circuit. The verifier checks that
+                the proof was generated with these exact public inputs.
+              </p>
             </div>
+
+            {/* Proof points */}
             <div>
-              <span className="text-[#8B5CF6]">{"\u03C0_B"}</span>
-              <span className="text-secondary"> (G2): </span>
-              <span className="break-all text-secondary/80">
-                [[{r.proof.pi_b[0][0].slice(0, 16)}..., {r.proof.pi_b[0][1].slice(0, 16)}...], [{r.proof.pi_b[1][0].slice(0, 16)}..., {r.proof.pi_b[1][1].slice(0, 16)}...]]
-              </span>
-            </div>
-            <div>
-              <span className="text-[#8B5CF6]">{"\u03C0_C"}</span>
-              <span className="text-secondary"> (G1): </span>
-              <span className="break-all text-secondary/80">
-                [{r.proof.pi_c[0].slice(0, 24)}..., {r.proof.pi_c[1].slice(0, 24)}...]
-              </span>
+              <p className="text-[13px] font-medium text-secondary mb-2">
+                Groth16 proof
+              </p>
+              <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[11px] space-y-2">
+                <div>
+                  <span className="text-[#8B5CF6]">{"\u03C0_A"}</span>
+                  <span className="text-secondary"> (G1): </span>
+                  <span className="break-all text-secondary/80">
+                    [{r.proof.pi_a[0].slice(0, 24)}..., {r.proof.pi_a[1].slice(0, 24)}...]
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[#8B5CF6]">{"\u03C0_B"}</span>
+                  <span className="text-secondary"> (G2): </span>
+                  <span className="break-all text-secondary/80">
+                    [[{r.proof.pi_b[0][0].slice(0, 16)}..., {r.proof.pi_b[0][1].slice(0, 16)}...], [{r.proof.pi_b[1][0].slice(0, 16)}..., {r.proof.pi_b[1][1].slice(0, 16)}...]]
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[#8B5CF6]">{"\u03C0_C"}</span>
+                  <span className="text-secondary"> (G1): </span>
+                  <span className="break-all text-secondary/80">
+                    [{r.proof.pi_c[0].slice(0, 24)}..., {r.proof.pi_c[1].slice(0, 24)}...]
+                  </span>
+                </div>
+              </div>
+              <p className="text-[12px] text-secondary/70 mt-1.5">
+                BN254 (alt_bn128) curve. Three elliptic curve points encoding the
+                prover&apos;s knowledge of the witness satisfying the circuit constraints.
+              </p>
             </div>
           </div>
-          <p className="text-[12px] text-secondary/70 mt-1.5">
-            BLS12-381, {r.proof.protocol} protocol
-          </p>
-        </div>
+        </details>
 
         {/* Verification result */}
         <div
