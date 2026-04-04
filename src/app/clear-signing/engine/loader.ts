@@ -50,25 +50,40 @@ type JsonSpec = {
 
 // ─── Converters ─────────────────────────────────────────────────────────────
 
-function parseFormat(f: { kind: string; decimals?: number; symbol?: string; enumName?: string }): Format {
+function parseFormat(
+  f: { kind: string; decimals?: number; symbol?: string; enumName?: string },
+  deploymentMeta?: { decimals?: number; symbol?: string }
+): Format {
   switch (f.kind) {
     case "tokenAmount":
-      return { kind: "tokenAmount", decimals: f.decimals ?? 18, symbol: f.symbol };
+      // Deployment decimals/symbol override the generic spec values
+      // (e.g. ERC-20 spec says 18 decimals, but USDC deployment has 6)
+      return {
+        kind: "tokenAmount",
+        decimals: deploymentMeta?.decimals ?? f.decimals ?? 18,
+        symbol: deploymentMeta?.symbol ?? f.symbol,
+      };
     case "address":
       return { kind: "address" };
     case "enum":
-      return { kind: "raw" }; // Enums simplified to raw for now
+      return { kind: "raw" };
     default:
       return { kind: "raw" };
   }
 }
 
-function parseHole(h: { name: string; format: { kind: string; decimals?: number; symbol?: string } }): Hole {
-  return { name: h.name, format: parseFormat(h.format) };
+function parseHole(
+  h: { name: string; format: { kind: string; decimals?: number; symbol?: string } },
+  deploymentMeta?: { decimals?: number; symbol?: string }
+): Hole {
+  return { name: h.name, format: parseFormat(h.format, deploymentMeta) };
 }
 
-function parseTemplate(t: { text: string; holes: { name: string; format: any }[] }): Template {
-  return { text: t.text, holes: t.holes.map(parseHole) };
+function parseTemplate(
+  t: { text: string; holes: { name: string; format: any }[] },
+  deploymentMeta?: { decimals?: number; symbol?: string }
+): Template {
+  return { text: t.text, holes: t.holes.map(h => parseHole(h, deploymentMeta)) };
 }
 
 function parseExpr(e: JsonExpr): Expr {
@@ -170,7 +185,7 @@ export function loadIntentSpec(
     .map(fn => ({
       name: fn.name,
       params: fn.params.map(p => ({ name: p.name, type: parseParamType(p.type) })),
-      body: fn.body.map(s => resolveStmt(s, predicates, constantValues)),
+      body: fn.body.map(s => resolveStmt(s, predicates, constantValues, meta)),
     }));
 
   // Parse bindings
@@ -204,17 +219,18 @@ export function loadIntentSpec(
 function resolveStmt(
   s: JsonStmt,
   predicates: Map<string, { params: string[]; expr: JsonExpr }>,
-  constants: Map<string, bigint>
+  constants: Map<string, bigint>,
+  deploymentMeta?: { decimals?: number; symbol?: string }
 ): Stmt {
   if (s.kind === "emit") {
-    return { kind: "emit", template: parseTemplate(s.template) };
+    return { kind: "emit", template: parseTemplate(s.template, deploymentMeta) };
   }
   if (s.kind === "when") {
     return {
       kind: "when",
       condition: resolveExpr(s.condition, predicates, constants),
-      then: s.then.map((st: JsonStmt) => resolveStmt(st, predicates, constants)),
-      otherwise: s.otherwise.map((st: JsonStmt) => resolveStmt(st, predicates, constants)),
+      then: s.then.map((st: JsonStmt) => resolveStmt(st, predicates, constants, deploymentMeta)),
+      otherwise: s.otherwise.map((st: JsonStmt) => resolveStmt(st, predicates, constants, deploymentMeta)),
     };
   }
   return { kind: "emit", template: { text: "(unsupported)", holes: [] } };

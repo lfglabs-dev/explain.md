@@ -110,7 +110,7 @@ function renderIntent(
       }
     }
 
-    text = text.replace(placeholder, display);
+    text = text.replaceAll(placeholder, display);
   }
   return text;
 }
@@ -545,7 +545,7 @@ function ProofStep({
 }) {
   if (step.status === "unavailable") {
     return (
-      <StepContainer index={7} title="Proof verification" status="success">
+      <StepContainer index={7} title="Proof verification" status="error">
         <p className="text-secondary text-[13px]">
           No compiled circuit available for this function
         </p>
@@ -573,7 +573,7 @@ function ProofStep({
 
   const r = step.result!;
   return (
-    <StepContainer index={7} title="Proof verification" status="success">
+    <StepContainer index={7} title="Proof verification" status={r.verified ? "success" : "error"}>
       <div className="space-y-4">
         <details className="group/proof">
           <summary className="text-[13px] text-secondary cursor-pointer select-none hover:text-foreground transition-colors flex items-center gap-1.5">
