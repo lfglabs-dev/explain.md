@@ -165,8 +165,8 @@ export function encodeCalldata(
   params: { type: ParamType; value: Value }[]
 ): string {
   const sel = selector.startsWith("0x") ? selector.slice(2) : selector;
-  let staticParts: string[] = [];
-  let dynamicParts: string[] = [];
+  const staticParts: string[] = [];
+  const dynamicParts: string[] = [];
   // Track dynamic data offset (starts after all static words)
   let dynamicOffset = params.length * 32;
 

@@ -78,9 +78,22 @@ export default function AdminPage() {
     setLoading(false);
   }, []);
 
+  // Load entries on mount (effect subscribes to external ENS state)
   useEffect(() => {
-    refreshEntries();
-  }, [refreshEntries]);
+    let cancelled = false;
+    (async () => {
+      const map = new Map<string, EnsSpecEntry | null>();
+      for (const c of KNOWN_CONTRACTS) {
+        const entry = await readSpecFromEns(c.address);
+        map.set(c.address.toLowerCase(), entry);
+      }
+      if (!cancelled) {
+        setEntries(map);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // ── Write a preset entry ──
   const handleWritePreset = useCallback(

@@ -81,23 +81,10 @@ function parseHole(
 }
 
 function parseTemplate(
-  t: { text: string; holes: { name: string; format: any }[] },
+  t: { text: string; holes: { name: string; format: { kind: string; decimals?: number; symbol?: string } }[] },
   deploymentMeta?: { decimals?: number; symbol?: string }
 ): Template {
   return { text: t.text, holes: t.holes.map(h => parseHole(h, deploymentMeta)) };
-}
-
-function parseExpr(e: JsonExpr): Expr {
-  switch (e.kind) {
-    case "param":
-      return { kind: "param", name: e.name };
-    case "const":
-      return { kind: "const", value: BigInt(e.value) };
-    case "eq":
-      return { kind: "eq", left: parseExpr(e.left), right: parseExpr(e.right) };
-    default:
-      return { kind: "const", value: 0n };
-  }
 }
 
 function parseParamType(t: string): ParamType {

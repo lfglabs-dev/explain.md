@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { ExternalLink, Disclosure } from "../components";
-import { findSpec, findSpecFromEns } from "./engine/specs";
+import { findSpecFromEns } from "./engine/specs";
 import { extractSelector, decodeCalldata } from "./engine/decoder";
 import { evaluateIntent, collectAllTemplates } from "./engine/evaluator";
 import {
