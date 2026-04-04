@@ -125,48 +125,10 @@ const uniswapSwap: Example = {
   ]),
 };
 
-/**
- * Uniswap V2: swap ETH for tokens (payable)
- *
- * swapExactETHForTokens(uint256 amountOutMin,
- *   address[] path, address to, uint256 deadline)
- * selector: 0x7ff36ab5
- */
-const uniswapSwapETH: Example = {
-  label: "Uniswap ETH Swap",
-  description: "Swap ETH for at least 500 USDC",
-  contractAddress: UNISWAP_ROUTER,
-  calldata: encodeCalldata("0x7ff36ab5", [
-    {
-      type: "uint256",
-      value: { kind: "int", value: 500_000_000n }, // 500 USDC
-    },
-    {
-      type: "address[]",
-      value: {
-        kind: "list",
-        items: [
-          { kind: "address", value: WETH },
-          { kind: "address", value: USDC_ADDRESS },
-        ],
-      },
-    },
-    {
-      type: "address",
-      value: { kind: "address", value: VITALIK },
-    },
-    {
-      type: "uint256",
-      value: { kind: "int", value: 1735689600n },
-    },
-  ]),
-};
-
 // ─── Export ──────────────────────────────────────────────────────────────────
 
 export const EXAMPLES: Example[] = [
   usdcTransfer,
   usdcApprove,
   uniswapSwap,
-  uniswapSwapETH,
 ];

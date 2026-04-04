@@ -193,11 +193,11 @@ export const UNISWAP_V2_SPEC: IntentSpec = {
         {
           kind: "emit",
           template: {
-            text: "Swap {amountIn} of {tokenIn} for at least {amountOutMin} of {tokenOut}, send to {to}",
+            text: "Swap {amountIn} {tokenIn} for at least {amountOutMin} {tokenOut}, send to {to}",
             holes: [
-              { name: "amountIn", format: { kind: "raw" } },
+              { name: "amountIn", format: { kind: "tokenAmount", decimals: 18 } },
               { name: "tokenIn", format: { kind: "address" } },
-              { name: "amountOutMin", format: { kind: "raw" } },
+              { name: "amountOutMin", format: { kind: "tokenAmount", decimals: 6 } },
               { name: "tokenOut", format: { kind: "address" } },
               { name: "to", format: { kind: "address" } },
             ],
@@ -206,29 +206,6 @@ export const UNISWAP_V2_SPEC: IntentSpec = {
       ],
     },
 
-    // ── swapExactETHForTokens ──
-    {
-      name: "swapExactETHForTokens",
-      params: [
-        { name: "amountOutMin", type: "uint256" },
-        { name: "path", type: "address[]" },
-        { name: "to", type: "address" },
-        { name: "deadline", type: "uint256" },
-      ],
-      body: [
-        {
-          kind: "emit",
-          template: {
-            text: "Swap ETH for at least {amountOutMin} of {tokenOut}, send to {to}",
-            holes: [
-              { name: "amountOutMin", format: { kind: "raw" } },
-              { name: "tokenOut", format: { kind: "address" } },
-              { name: "to", format: { kind: "address" } },
-            ],
-          },
-        },
-      ],
-    },
   ],
   bindings: [
     {
@@ -237,13 +214,6 @@ export const UNISWAP_V2_SPEC: IntentSpec = {
         "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
       intentFnName: "swapExactTokensForTokens",
       paramMapping: ["amountIn", "amountOutMin", "path", "to", "deadline"],
-    },
-    {
-      selector: "0x7ff36ab5",
-      abiSignature:
-        "swapExactETHForTokens(uint256,address[],address,uint256)",
-      intentFnName: "swapExactETHForTokens",
-      paramMapping: ["amountOutMin", "path", "to", "deadline"],
     },
   ],
 };
