@@ -148,6 +148,7 @@ type WitnessResult = {
 function buildWitnessInput(
   binding: Binding,
   params: Map<string, Value>,
+  emitted: EmittedTemplate
 ): WitnessResult {
   const selectorInt = BigInt(
     parseInt(binding.selector.slice(2), 16)
@@ -156,6 +157,11 @@ function buildWitnessInput(
   const witnessFields: Record<string, string> = {};
   const cdNamed: { name: string; value: string }[] = [
     { name: "selector", value: selectorInt.toString() },
+  ];
+  // Output commitment inputs (for display): templateId + params in binding order
+  // The circuit computes Poseidon(templateId, params...) internally
+  const outNamed: { name: string; value: string }[] = [
+    { name: "templateId", value: emitted.templateIndex.toString() },
   ];
 
   for (const paramName of binding.paramMapping) {
@@ -168,14 +174,18 @@ function buildWitnessInput(
       witnessFields[`${paramName}_hi`] = hi.toString();
       cdNamed.push({ name: `${paramName}_lo`, value: lo.toString() });
       cdNamed.push({ name: `${paramName}_hi`, value: hi.toString() });
+      outNamed.push({ name: `${paramName}_lo`, value: lo.toString() });
+      outNamed.push({ name: `${paramName}_hi`, value: hi.toString() });
     } else if (value.kind === "address") {
       const addrInt = BigInt(value.value);
       witnessFields[paramName] = addrInt.toString();
       cdNamed.push({ name: paramName, value: addrInt.toString() });
+      outNamed.push({ name: paramName, value: addrInt.toString() });
     } else if (value.kind === "bool") {
       const boolInt = value.value ? 1n : 0n;
       witnessFields[paramName] = boolInt.toString();
       cdNamed.push({ name: paramName, value: boolInt.toString() });
+      outNamed.push({ name: paramName, value: boolInt.toString() });
     }
   }
 
@@ -185,7 +195,7 @@ function buildWitnessInput(
       ...witnessFields,
     },
     calldataInputs: cdNamed,
-    outputInputs: [], // Computed by circuit, read from publicSignals
+    outputInputs: outNamed,
   };
 }
 
@@ -232,7 +242,7 @@ export async function generateAndVerifyProof(
   // Build witness input — raw params only, no JS-computed commitments.
   // The circuit computes Poseidon hashes internally over BLS12-381's
   // scalar field and exposes them as public outputs.
-  const { witness, calldataInputs, outputInputs } = buildWitnessInput(binding, params);
+  const { witness, calldataInputs, outputInputs } = buildWitnessInput(binding, params, emitted);
 
   // Circuit artifact paths (served from /public)
   const wasmPath = `/circuits/${circuitName}/circuit.wasm`;
