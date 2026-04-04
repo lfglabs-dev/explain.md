@@ -11,7 +11,7 @@
  *   - Poseidon(selector, params...) == calldataCommitment (public output)
  *   - Poseidon(templateId, holes...) == outputCommitment (public output)
  *
- * The Poseidon hashes are computed inside the circuit over BLS12-381's
+ * The Poseidon hashes are computed inside the circuit over BN254's
  * scalar field. We do NOT compute them in JS — the circuit outputs them
  * as public signals.
  *
@@ -273,7 +273,7 @@ export async function generateAndVerifyProof(
   const snarkjs = await import("snarkjs");
 
   // Build witness input — raw params only, no JS-computed commitments.
-  // The circuit computes Poseidon hashes internally over BLS12-381's
+  // The circuit computes Poseidon hashes internally over BN254's
   // scalar field and exposes them as public outputs.
   const { witness, calldataInputs, outputInputs } = await buildWitnessInput(binding, params, emitted);
 

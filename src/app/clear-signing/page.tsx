@@ -640,7 +640,7 @@ function ProofStep({
                 </div>
               </div>
               <p className="text-[12px] text-secondary/70 mt-1.5">
-                Poseidon hashes over BLS12-381&apos;s scalar field, binding the raw
+                Poseidon hashes over BN254&apos;s scalar field, binding the raw
                 calldata and the evaluated intent to the proof. uint256 values are
                 split into two 128-bit limbs to fit the field.
               </p>
@@ -700,7 +700,7 @@ function ProofStep({
                 </div>
               </div>
               <p className="text-[12px] text-secondary/70 mt-1.5">
-                BLS12-381 curve. Three elliptic curve points encoding the
+                BN254 curve. Three elliptic curve points encoding the
                 prover&apos;s knowledge of the witness satisfying the circuit constraints.
               </p>
             </div>
