@@ -1,16 +1,19 @@
 /**
  * Groth16 Proof Generation & Verification
  *
- * Uses snarkjs and circomlibjs to:
- *   1. Compute Poseidon commitments (calldataHash, outputHash)
- *   2. Generate a Groth16 proof that the intent evaluation is correct
- *   3. Verify the proof against the verification key
+ * Uses snarkjs to:
+ *   1. Generate a Groth16 proof that the intent evaluation is correct
+ *   2. Verify the proof against the verification key
  *
- * The circuit proves:
+ * The circuit (compiled from Lean-generated Circom) proves:
  *   - The selector matches the expected constant
- *   - Poseidon(selector, params...) == calldataCommitment
  *   - The DSL program evaluates to this specific templateId
- *   - Poseidon(templateId, holes...) == outputCommitment
+ *   - Poseidon(selector, params...) == calldataCommitment (public output)
+ *   - Poseidon(templateId, holes...) == outputCommitment (public output)
+ *
+ * The Poseidon hashes are computed inside the circuit over BLS12-381's
+ * scalar field. We do NOT compute them in JS — the circuit outputs them
+ * as public signals.
  *
  * Circuit artifacts (.wasm, .zkey, vkey.json) were compiled from
  * Lean-generated Circom using the Verity compiler:
@@ -25,9 +28,9 @@ import type { EmittedTemplate, Value, Binding } from "./types";
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type ProofResult = {
-  /** Poseidon(selector, params...) */
+  /** Poseidon(selector, params...) — computed by the circuit */
   calldataCommitment: string;
-  /** Poseidon(templateId, holes...) */
+  /** Poseidon(templateId, holes...) — computed by the circuit */
   outputCommitment: string;
   /** Named inputs to the calldata Poseidon hash */
   calldataInputs: { name: string; value: string }[];
@@ -35,7 +38,7 @@ export type ProofResult = {
   outputInputs: { name: string; value: string }[];
   /** The Groth16 proof object */
   proof: Groth16Proof;
-  /** Public signals: [selector, calldataCommitment, outputCommitment] */
+  /** Public signals: [calldataCommitment, outputCommitment, selector] */
   publicSignals: string[];
   /** Whether the proof verified against the vkey */
   verified: boolean;
@@ -95,23 +98,25 @@ function splitUint256(value: bigint): [bigint, bigint] {
 
 // ─── Witness Input Construction ─────────────────────────────────────────────
 
-/**
- * Build the witness input JSON for the circuit.
- *
- * The input contains:
- *   - selector: the 4-byte function selector as a decimal string
- *   - calldataCommitment: Poseidon(selector, params...) as decimal
- *   - outputCommitment: Poseidon(templateId, holes...) as decimal
- *   - each parameter as a decimal string (uint256 split into _lo/_hi)
- *
- * @see verity/scripts/test_circom_e2e.sh — compute_inputs.js
- */
 type WitnessResult = {
+  /** Circuit input signals (only raw params, no commitments) */
   witness: Record<string, string>;
+  /** Named inputs for calldataCommitment display */
   calldataInputs: { name: string; value: string }[];
+  /** Named inputs for outputCommitment display */
   outputInputs: { name: string; value: string }[];
 };
 
+/**
+ * Build the witness input for the circuit.
+ *
+ * The circuit takes raw parameters as private inputs and the selector
+ * as a public input. It computes the Poseidon commitments internally
+ * over BLS12-381's scalar field and exposes them as public outputs.
+ *
+ * We do NOT compute Poseidon in JS — circomlibjs only supports BN254,
+ * but these circuits use BLS12-381.
+ */
 async function buildWitnessInput(
   binding: Binding,
   params: Map<string, Value>,
@@ -126,13 +131,12 @@ async function buildWitnessInput(
     parseInt(binding.selector.slice(2), 16)
   );
 
-  // Build the list of signal values for the calldata commitment
-  // Order: selector, then each param in binding order
+  // Build calldata commitment inputs: Poseidon(selector, params...)
   const cdInputs: bigint[] = [selectorInt];
+  const witnessFields: Record<string, string> = {};
   const cdNamed: { name: string; value: string }[] = [
     { name: "selector", value: selectorInt.toString() },
   ];
-  const witnessFields: Record<string, string> = {};
 
   for (const paramName of binding.paramMapping) {
     const value = params.get(paramName);
@@ -141,43 +145,33 @@ async function buildWitnessInput(
     if (value.kind === "int") {
       const [lo, hi] = splitUint256(value.value);
       cdInputs.push(lo, hi);
-      cdNamed.push({ name: `${paramName}_lo`, value: lo.toString() });
-      cdNamed.push({ name: `${paramName}_hi`, value: hi.toString() });
       witnessFields[`${paramName}_lo`] = lo.toString();
       witnessFields[`${paramName}_hi`] = hi.toString();
+      cdNamed.push({ name: `${paramName}_lo`, value: lo.toString() });
+      cdNamed.push({ name: `${paramName}_hi`, value: hi.toString() });
     } else if (value.kind === "address") {
       const addrInt = BigInt(value.value);
       cdInputs.push(addrInt);
-      cdNamed.push({ name: paramName, value: addrInt.toString() });
       witnessFields[paramName] = addrInt.toString();
+      cdNamed.push({ name: paramName, value: addrInt.toString() });
     } else if (value.kind === "bool") {
       const boolInt = value.value ? 1n : 0n;
       cdInputs.push(boolInt);
-      cdNamed.push({ name: paramName, value: boolInt.toString() });
       witnessFields[paramName] = boolInt.toString();
+      cdNamed.push({ name: paramName, value: boolInt.toString() });
     }
   }
 
-  // Compute calldataCommitment = Poseidon(selector, params...)
   const cdHash = F.toObject(poseidon(cdInputs));
 
-  // Build the output commitment inputs.
-  // CRITICAL: The order must match the circuit's outHash ordering, which is
-  // first-occurrence dedup across ALL emit templates (AST walk order).
-  // For ERC-20 specs, this matches the parameter declaration order because
-  // the "then" branch hole (to) appears before the "else" branch holes.
-  //
-  // The circuit computes: Poseidon(templateId, to, amount_lo, amount_hi)
-  // NOT: Poseidon(templateId, amount_lo, amount_hi, to) ← wrong
-  //
-  // We use the binding's parameter order which matches the circuit signals.
+  // Build output commitment inputs: Poseidon(templateId, params...)
+  // Order matches the circuit's outHash (binding parameter order)
   const templateId = BigInt(emitted.templateIndex);
   const outInputs: bigint[] = [templateId];
   const outNamed: { name: string; value: string }[] = [
     { name: "templateId", value: templateId.toString() },
   ];
 
-  // Use parameter order from binding (matches circuit signal declaration order)
   for (const paramName of binding.paramMapping) {
     const value = params.get(paramName);
     if (!value) continue;
@@ -188,16 +182,14 @@ async function buildWitnessInput(
       outNamed.push({ name: `${paramName}_lo`, value: lo.toString() });
       outNamed.push({ name: `${paramName}_hi`, value: hi.toString() });
     } else if (value.kind === "address") {
-      const addrInt = BigInt(value.value);
-      outInputs.push(addrInt);
-      outNamed.push({ name: paramName, value: addrInt.toString() });
+      outInputs.push(BigInt(value.value));
+      outNamed.push({ name: paramName, value: BigInt(value.value).toString() });
     } else if (value.kind === "bool") {
       outInputs.push(value.value ? 1n : 0n);
       outNamed.push({ name: paramName, value: (value.value ? 1n : 0n).toString() });
     }
   }
 
-  // Compute outputCommitment = Poseidon(templateId, params...)
   const outHash = F.toObject(poseidon(outInputs));
 
   return {
@@ -228,15 +220,13 @@ export function hasCircuit(
  * Generate and verify a Groth16 proof for the intent evaluation.
  *
  * Full pipeline:
- *   1. Compute Poseidon commitments (circomlibjs)
+ *   1. Build witness inputs (raw params only)
  *   2. Generate witness + proof (snarkjs.groth16.fullProve)
  *   3. Verify proof (snarkjs.groth16.verify)
+ *   4. Extract commitments from public signals
  *
- * @param specName - The contract spec name (e.g. "USDC")
- * @param binding - The selector binding that matched
- * @param params - Decoded calldata parameters
- * @param emitted - The evaluated intent template
- * @returns ProofResult with proof data and verification status
+ * Public signals order (snarkjs convention): outputs first, then inputs.
+ * For these circuits: [calldataCommitment, outputCommitment, selector]
  */
 export async function generateAndVerifyProof(
   specName: string,
@@ -254,7 +244,7 @@ export async function generateAndVerifyProof(
   // Dynamic import snarkjs (heavy library)
   const snarkjs = await import("snarkjs");
 
-  // Build witness input with Poseidon commitments
+  // Build witness input (raw params only, no JS-computed commitments)
   const { witness, calldataInputs, outputInputs } = await buildWitnessInput(binding, params, emitted);
 
   // Circuit artifact paths (served from /public)
@@ -278,6 +268,8 @@ export async function generateAndVerifyProof(
   const verified = await snarkjs.groth16.verify(vkey, publicSignals, proof);
   const verifyTimeMs = performance.now() - verifyStart;
 
+  // Public signals: [calldataCommitment, outputCommitment, selector]
+  // (snarkjs orders outputs before public inputs)
   return {
     calldataCommitment: witness.calldataCommitment,
     outputCommitment: witness.outputCommitment,
