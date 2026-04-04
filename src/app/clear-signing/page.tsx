@@ -606,106 +606,94 @@ function ProofStep({
             Proof details
           </summary>
           <div className="mt-3 space-y-4">
-            {/* Commitments */}
+            {/* Circuit inputs */}
             <div>
               <p className="text-[13px] font-medium text-secondary mb-2">
-                Poseidon commitments
+                Circuit inputs
               </p>
-              <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-4">
+              <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-2">
                 <div>
-                  <div className="text-secondary text-[11px] mb-1">
+                  <div className="text-[11px] text-emerald-600 mb-1">Public input</div>
+                  <div className="flex gap-2 ml-2">
+                    <span className="text-secondary min-w-[100px]">selector</span>
+                    <span className="break-all">{r.calldataInputs[0]?.value}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-amber-600 mb-1">Private inputs (hidden from verifier)</div>
+                  <div className="space-y-0.5 ml-2">
+                    {r.calldataInputs.slice(1).map((input) => (
+                      <div key={input.name} className="flex gap-2">
+                        <span className="text-secondary min-w-[100px]">{input.name}</span>
+                        <span className="break-all">{input.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <p className="text-[12px] text-secondary/70 mt-1.5">
+                The prover knows all inputs. The verifier only sees the selector.
+                uint256 values are split into two 128-bit limbs to fit BLS12-381.
+              </p>
+            </div>
+
+            {/* Circuit outputs (Poseidon commitments) */}
+            <div>
+              <p className="text-[13px] font-medium text-secondary mb-2">
+                Circuit outputs (computed by Poseidon inside the circuit)
+              </p>
+              <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-3">
+                <div>
+                  <div className="text-secondary text-[11px] mb-0.5">
                     calldataCommitment = Poseidon({r.calldataInputs.map((i) => i.name).join(", ")})
                   </div>
-                  <div className="space-y-0.5 mb-1.5 ml-2 text-[11px]">
-                    {r.calldataInputs.map((input) => (
-                      <div key={input.name} className="flex gap-2">
-                        <span className="text-secondary min-w-[100px]">{input.name}</span>
-                        <span className="break-all">{input.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-[11px] text-secondary/60">= </div>
-                  <span className="break-all">{r.calldataCommitment}</span>
+                  <span className="break-all text-[11px]">{r.calldataCommitment}</span>
                 </div>
                 <div>
-                  <div className="text-secondary text-[11px] mb-1">
+                  <div className="text-secondary text-[11px] mb-0.5">
                     outputCommitment = Poseidon({r.outputInputs.map((i) => i.name).join(", ")})
                   </div>
-                  <div className="space-y-0.5 mb-1.5 ml-2 text-[11px]">
-                    {r.outputInputs.map((input) => (
-                      <div key={input.name} className="flex gap-2">
-                        <span className="text-secondary min-w-[100px]">{input.name}</span>
-                        <span className="break-all">{input.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-[11px] text-secondary/60">= </div>
-                  <span className="break-all">{r.outputCommitment}</span>
+                  <span className="break-all text-[11px]">{r.outputCommitment}</span>
                 </div>
               </div>
               <p className="text-[12px] text-secondary/70 mt-1.5">
-                Poseidon hashes over BLS12-381&apos;s scalar field, binding the raw
-                calldata and the evaluated intent to the proof. uint256 values are
-                split into two 128-bit limbs to fit the field.
+                The circuit hashes the inputs with Poseidon over BLS12-381 and
+                exposes these two commitments as public outputs. They bind the
+                raw calldata and the evaluated template to the proof.
               </p>
             </div>
 
-            {/* Public signals */}
+            {/* Proof */}
             <div>
               <p className="text-[13px] font-medium text-secondary mb-2">
-                Public signals
-              </p>
-              <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[12px] space-y-1.5">
-                <div className="flex gap-2">
-                  <span className="text-secondary min-w-[150px]">calldataCommitment</span>
-                  <span className="break-all">{r.publicSignals[0]}</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-secondary min-w-[150px]">outputCommitment</span>
-                  <span className="break-all">{r.publicSignals[1]}</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-secondary min-w-[150px]">selector</span>
-                  <span className="break-all">{r.publicSignals[2]}</span>
-                </div>
-              </div>
-              <p className="text-[12px] text-secondary/70 mt-1.5">
-                The three values exposed by the circuit. The verifier checks that
-                the proof was generated with these exact public inputs.
-              </p>
-            </div>
-
-            {/* Proof points */}
-            <div>
-              <p className="text-[13px] font-medium text-secondary mb-2">
-                Groth16 proof
+                Groth16 proof (BLS12-381)
               </p>
               <div className="bg-surface border border-border rounded px-4 py-3 font-mono text-[11px] space-y-2">
                 <div>
                   <span className="text-[#8B5CF6]">{"\u03C0_A"}</span>
                   <span className="text-secondary"> (G1): </span>
                   <span className="break-all text-secondary/80">
-                    [{r.proof.pi_a[0].slice(0, 24)}..., {r.proof.pi_a[1].slice(0, 24)}...]
+                    [{r.proof.pi_a[0].slice(0, 20)}...]
                   </span>
                 </div>
                 <div>
                   <span className="text-[#8B5CF6]">{"\u03C0_B"}</span>
                   <span className="text-secondary"> (G2): </span>
                   <span className="break-all text-secondary/80">
-                    [[{r.proof.pi_b[0][0].slice(0, 16)}..., {r.proof.pi_b[0][1].slice(0, 16)}...], [{r.proof.pi_b[1][0].slice(0, 16)}..., {r.proof.pi_b[1][1].slice(0, 16)}...]]
+                    [[{r.proof.pi_b[0][0].slice(0, 12)}...], [{r.proof.pi_b[1][0].slice(0, 12)}...]]
                   </span>
                 </div>
                 <div>
                   <span className="text-[#8B5CF6]">{"\u03C0_C"}</span>
                   <span className="text-secondary"> (G1): </span>
                   <span className="break-all text-secondary/80">
-                    [{r.proof.pi_c[0].slice(0, 24)}..., {r.proof.pi_c[1].slice(0, 24)}...]
+                    [{r.proof.pi_c[0].slice(0, 20)}...]
                   </span>
                 </div>
               </div>
               <p className="text-[12px] text-secondary/70 mt-1.5">
-                BLS12-381 curve. Three elliptic curve points encoding the
-                prover&apos;s knowledge of the witness satisfying the circuit constraints.
+                Three elliptic curve points proving the prover knows private
+                inputs that satisfy all circuit constraints without revealing them.
               </p>
             </div>
           </div>
