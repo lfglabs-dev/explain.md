@@ -264,15 +264,27 @@ export default function WhatIsAFormalProof() {
         <h2 className="text-lg font-semibold tracking-tight mb-6">
           See it in practice
         </h2>
-        <p className="leading-relaxed">
-          <a
-            href="/lido-vault-solvency"
-            className="underline underline-offset-3 hover:text-foreground transition-colors"
-          >
-            Lido V3 Vault Solvency Guarantee
-          </a>
-          {" "}. A formally verified property of a production smart contract.
-        </p>
+        <div className="leading-relaxed space-y-3">
+          <p>
+            <a
+              href="/lido-vault-solvency"
+              className="underline underline-offset-3 hover:text-foreground transition-colors"
+            >
+              Lido V3 Vault Solvency Guarantee
+            </a>
+            {" "}. A formally verified property of a production smart contract.
+          </p>
+          <p>
+            <a
+              href="/clear-signing"
+              className="underline underline-offset-3 hover:text-foreground transition-colors"
+            >
+              Clear Signing
+            </a>
+            {" "}. Natural language interpretation of transaction intent, backed
+            by zero-knowledge proofs.
+          </p>
+        </div>
       </section>
 
       <footer className="mt-12 pt-8 border-t border-border">

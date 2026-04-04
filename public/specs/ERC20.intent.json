@@ -1,0 +1,292 @@
+{
+  "contractName": "USDC",
+  "fns": [
+    {
+      "name": "isMaxUint",
+      "params": [
+        {
+          "name": "v",
+          "type": "uint256"
+        }
+      ],
+      "returnKind": "bool",
+      "body": [],
+      "expr": {
+        "kind": "eq",
+        "left": {
+          "kind": "param",
+          "name": "v"
+        },
+        "right": {
+          "kind": "param",
+          "name": "MAX_UINT256"
+        }
+      }
+    },
+    {
+      "name": "transfer",
+      "params": [
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "returnKind": "void",
+      "body": [
+        {
+          "kind": "when",
+          "condition": {
+            "kind": "call",
+            "name": "isMaxUint",
+            "args": [
+              {
+                "kind": "param",
+                "name": "amount"
+              }
+            ]
+          },
+          "then": [
+            {
+              "kind": "emit",
+              "template": {
+                "text": "Send all USDC to {to}",
+                "holes": [
+                  {
+                    "name": "to",
+                    "format": {
+                      "kind": "address"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "otherwise": [
+            {
+              "kind": "emit",
+              "template": {
+                "text": "Send {amount} USDC to {to}",
+                "holes": [
+                  {
+                    "name": "amount",
+                    "format": {
+                      "kind": "tokenAmount",
+                      "decimals": 6
+                    }
+                  },
+                  {
+                    "name": "to",
+                    "format": {
+                      "kind": "address"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "expr": null
+    },
+    {
+      "name": "approve",
+      "params": [
+        {
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "returnKind": "void",
+      "body": [
+        {
+          "kind": "when",
+          "condition": {
+            "kind": "call",
+            "name": "isMaxUint",
+            "args": [
+              {
+                "kind": "param",
+                "name": "amount"
+              }
+            ]
+          },
+          "then": [
+            {
+              "kind": "emit",
+              "template": {
+                "text": "Approve {spender} to spend unlimited USDC",
+                "holes": [
+                  {
+                    "name": "spender",
+                    "format": {
+                      "kind": "address"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "otherwise": [
+            {
+              "kind": "emit",
+              "template": {
+                "text": "Approve {spender} to spend {amount} USDC",
+                "holes": [
+                  {
+                    "name": "spender",
+                    "format": {
+                      "kind": "address"
+                    }
+                  },
+                  {
+                    "name": "amount",
+                    "format": {
+                      "kind": "tokenAmount",
+                      "decimals": 6
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "expr": null
+    },
+    {
+      "name": "transferFrom",
+      "params": [
+        {
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "returnKind": "void",
+      "body": [
+        {
+          "kind": "when",
+          "condition": {
+            "kind": "call",
+            "name": "isMaxUint",
+            "args": [
+              {
+                "kind": "param",
+                "name": "amount"
+              }
+            ]
+          },
+          "then": [
+            {
+              "kind": "emit",
+              "template": {
+                "text": "Transfer all USDC from {from} to {to}",
+                "holes": [
+                  {
+                    "name": "from",
+                    "format": {
+                      "kind": "address"
+                    }
+                  },
+                  {
+                    "name": "to",
+                    "format": {
+                      "kind": "address"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "otherwise": [
+            {
+              "kind": "emit",
+              "template": {
+                "text": "Transfer {amount} USDC from {from} to {to}",
+                "holes": [
+                  {
+                    "name": "amount",
+                    "format": {
+                      "kind": "tokenAmount",
+                      "decimals": 6
+                    }
+                  },
+                  {
+                    "name": "from",
+                    "format": {
+                      "kind": "address"
+                    }
+                  },
+                  {
+                    "name": "to",
+                    "format": {
+                      "kind": "address"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "expr": null
+    }
+  ],
+  "constants": [
+    {
+      "name": "MAX_UINT256",
+      "value": {
+        "kind": "const",
+        "value": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+      }
+    }
+  ],
+  "bindings": [
+    {
+      "functionName": "transfer",
+      "intentFnName": "transfer",
+      "selector": "0xa9059cbb",
+      "abiSignature": "transfer(address,uint256)",
+      "paramMapping": [
+        "to",
+        "amount"
+      ]
+    },
+    {
+      "functionName": "approve",
+      "intentFnName": "approve",
+      "selector": "0x095ea7b3",
+      "abiSignature": "approve(address,uint256)",
+      "paramMapping": [
+        "spender",
+        "amount"
+      ]
+    },
+    {
+      "functionName": "transferFrom",
+      "intentFnName": "transferFrom",
+      "selector": "0x23b872dd",
+      "abiSignature": "transferFrom(address,address,uint256)",
+      "paramMapping": [
+        "from",
+        "to",
+        "amount"
+      ]
+    }
+  ]
+}
