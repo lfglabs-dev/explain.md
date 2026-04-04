@@ -362,7 +362,7 @@ function SpecMatchStep({
             <summary className="text-[13px] text-amber-600 cursor-pointer select-none hover:text-amber-700 transition-colors">
               View trust assumption
             </summary>
-            <p className="mt-2 text-[13px] leading-relaxed text-secondary">
+            <p className="mt-2 text-[13px] leading-relaxed text-amber-600">
               In this proof of concept, the spec registry is hardcoded in the
               frontend. In production, the registry would be maintained by the
               wallet (e.g. MetaMask) and each spec entry would carry an approval
@@ -735,7 +735,7 @@ function ProofStep({
           <summary className="text-[13px] text-amber-600 cursor-pointer select-none hover:text-amber-700 transition-colors">
             View trust assumption
           </summary>
-          <p className="mt-2 text-[13px] leading-relaxed text-secondary">
+          <p className="mt-2 text-[13px] leading-relaxed text-amber-600">
             This proof only guarantees that the displayed template is correct
             according to the specification the circuit was compiled from. The
             natural language string itself is not inside the proof. For the

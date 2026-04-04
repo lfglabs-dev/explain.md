@@ -110,19 +110,20 @@ type WitnessResult = {
 /**
  * Build the witness input for the circuit.
  *
- * The circuit takes raw parameters as private inputs and the selector
- * as a public input. It computes the Poseidon commitments internally
- * over BLS12-381's scalar field and exposes them as public outputs.
+ * The circuit has 6 signals for ERC-20 functions:
+ *   Public:  selector, calldataCommitment, outputCommitment
+ *   Private: param signals (e.g. spender, amount_lo, amount_hi)
  *
- * We do NOT compute Poseidon in JS — circomlibjs only supports BN254,
- * but these circuits use BLS12-381.
+ * The commitments are Poseidon hashes computed over BN254's scalar field
+ * (matching the circomlib Poseidon used inside the circuit):
+ *   calldataCommitment = Poseidon(selector, params...)
+ *   outputCommitment   = Poseidon(templateId, params...)
  */
 async function buildWitnessInput(
   binding: Binding,
   params: Map<string, Value>,
   emitted: EmittedTemplate
 ): Promise<WitnessResult> {
-  // Dynamic import of circomlibjs (heavy, only load when needed)
   const { buildPoseidon } = await import("circomlibjs");
   const poseidon = await buildPoseidon();
   const F = poseidon.F;
@@ -131,7 +132,7 @@ async function buildWitnessInput(
     parseInt(binding.selector.slice(2), 16)
   );
 
-  // Build calldata commitment inputs: Poseidon(selector, params...)
+  // Calldata commitment: Poseidon(selector, params...)
   const cdInputs: bigint[] = [selectorInt];
   const witnessFields: Record<string, string> = {};
   const cdNamed: { name: string; value: string }[] = [
@@ -164,8 +165,8 @@ async function buildWitnessInput(
 
   const cdHash = F.toObject(poseidon(cdInputs));
 
-  // Build output commitment inputs: Poseidon(templateId, params...)
-  // Order matches the circuit's outHash (binding parameter order)
+  // Output commitment: Poseidon(templateId, params...)
+  // Order matches circuit's outHash (binding parameter order)
   const templateId = BigInt(emitted.templateIndex);
   const outInputs: bigint[] = [templateId];
   const outNamed: { name: string; value: string }[] = [
@@ -244,7 +245,9 @@ export async function generateAndVerifyProof(
   // Dynamic import snarkjs (heavy library)
   const snarkjs = await import("snarkjs");
 
-  // Build witness input (raw params only, no JS-computed commitments)
+  // Build witness input — raw params only, no JS-computed commitments.
+  // The circuit computes Poseidon hashes internally over BLS12-381's
+  // scalar field and exposes them as public outputs.
   const { witness, calldataInputs, outputInputs } = await buildWitnessInput(binding, params, emitted);
 
   // Circuit artifact paths (served from /public)
@@ -268,8 +271,8 @@ export async function generateAndVerifyProof(
   const verified = await snarkjs.groth16.verify(vkey, publicSignals, proof);
   const verifyTimeMs = performance.now() - verifyStart;
 
-  // Public signals: [calldataCommitment, outputCommitment, selector]
-  // (snarkjs orders outputs before public inputs)
+  // Public signals (snarkjs convention: outputs first, then public inputs):
+  // [calldataCommitment, outputCommitment, selector]
   return {
     calldataCommitment: witness.calldataCommitment,
     outputCommitment: witness.outputCommitment,
