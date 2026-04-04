@@ -690,18 +690,11 @@ export default function ClearSigningPage() {
     }
   }, [contractAddress, calldata]);
 
-  // Auto-run when an example is loaded
-  const prevCalldataRef = useRef(calldata);
+  // Auto-run whenever inputs change
   useEffect(() => {
-    if (
-      calldata &&
-      contractAddress &&
-      calldata !== prevCalldataRef.current
-    ) {
-      prevCalldataRef.current = calldata;
-      const timer = setTimeout(() => interpret(), 100);
-      return () => clearTimeout(timer);
-    }
+    if (!calldata || !contractAddress) return;
+    const timer = setTimeout(() => interpret(), 150);
+    return () => clearTimeout(timer);
   }, [calldata, contractAddress, interpret]);
 
   return (
@@ -814,13 +807,6 @@ export default function ClearSigningPage() {
               spellCheck={false}
             />
           </div>
-          <button
-            onClick={interpret}
-            disabled={isRunning || !contractAddress || !calldata}
-            className="px-5 py-2 text-[14px] font-medium bg-foreground text-background rounded hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-          >
-            {isRunning ? "Interpreting..." : "Interpret transaction"}
-          </button>
         </div>
 
         {steps.length > 0 && (
