@@ -15,9 +15,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lido V3 Vault Solvency Guarantee",
+  title: "explain.md — Verity",
   description:
-    "Formally verified solvency guarantee for Lido V3. Reproducible Lean proof.",
+    "Formal proofs and verified smart contract properties, explained.",
 };
 
 export default function RootLayout({
