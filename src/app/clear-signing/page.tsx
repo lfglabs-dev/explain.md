@@ -726,7 +726,7 @@ function ProofStep({
             }`}
           >
             {r.verified ? "Pairing check passed" : "Pairing check failed"}
-            {" \u2014 "}generated in {r.proveTimeMs.toFixed(0)}ms, verified in{" "}
+            {", "}generated in {r.proveTimeMs.toFixed(0)}ms, verified in{" "}
             {r.verifyTimeMs.toFixed(0)}ms
           </p>
         </div>
