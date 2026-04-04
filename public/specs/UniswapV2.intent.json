@@ -1,0 +1,70 @@
+{
+  "contractName": "UniswapV2Router",
+  "fns": [
+    {
+      "name": "swapExactTokensForTokens",
+      "params": [
+        {
+          "name": "amountIn",
+          "type": "uint256"
+        },
+        {
+          "name": "amountOutMin",
+          "type": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "returnKind": "void",
+      "body": [
+        {
+          "kind": "emit",
+          "template": {
+            "text": "Swap {amountIn} for at least {amountOutMin}, send to {to}",
+            "holes": [
+              {
+                "name": "amountIn",
+                "format": {
+                  "kind": "tokenAmount",
+                  "decimals": 18
+                }
+              },
+              {
+                "name": "amountOutMin",
+                "format": {
+                  "kind": "tokenAmount",
+                  "decimals": 6
+                }
+              },
+              {
+                "name": "to",
+                "format": {
+                  "kind": "address"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expr": null
+    }
+  ],
+  "constants": [],
+  "bindings": [
+    {
+      "functionName": "swapExactTokensForTokens",
+      "intentFnName": "swapExactTokensForTokens",
+      "selector": "0x38ed1739",
+      "abiSignature": "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+      "paramMapping": [
+        "amountIn",
+        "amountOutMin",
+        "path",
+        "to",
+        "deadline"
+      ]
+    }
+  ]
+}

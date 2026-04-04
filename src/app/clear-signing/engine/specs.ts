@@ -12,69 +12,23 @@
 import type { IntentSpec } from "./types";
 import { loadIntentSpec } from "./loader";
 import ERC20_INTENT_JSON from "../../../../public/specs/ERC20.intent.json";
+import UNISWAP_V2_INTENT_JSON from "../../../../public/specs/UniswapV2.intent.json";
 
-// ─── USDC (ERC-20) — loaded from Verity compiler output ─────────────────────
+// ─── USDC (ERC-20) — from verity/Contracts/ERC20/Display.lean ────────────────
 
-/**
- * USDC intent spec, loaded from the Lean compiler JSON.
- *
- * The JSON was generated from verity/Contracts/ERC20/Display.lean:
- *   intent_spec "ERC20" where
- *     const MAX_UINT256 := (2^256 - 1)
- *     predicate isMaxUint(v : uint256) := v == MAX_UINT256
- *     intent transfer(to : address, amount : uint256) where ...
- *     intent approve(spender : address, amount : uint256) where ...
- *     intent transferFrom(fromAddr : address, to : address, amount : uint256) where ...
- */
 export const USDC_SPEC: IntentSpec = loadIntentSpec(
   ERC20_INTENT_JSON,
   "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
   { type: "token", decimals: 6, symbol: "USDC" }
 );
 
-// ─── Uniswap V2 Router (not yet in Verity) ──────────────────────────────────
+// ─── Uniswap V2 Router — from verity/Contracts/UniswapV2/Display.lean ────────
 
-export const UNISWAP_V2_SPEC: IntentSpec = {
-  contractName: "Uniswap V2 Router",
-  address: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
-  type: "protocol",
-  constants: {},
-  fns: [
-    {
-      name: "swapExactTokensForTokens",
-      params: [
-        { name: "amountIn", type: "uint256" },
-        { name: "amountOutMin", type: "uint256" },
-        { name: "path", type: "address[]" },
-        { name: "to", type: "address" },
-        { name: "deadline", type: "uint256" },
-      ],
-      body: [
-        {
-          kind: "emit",
-          template: {
-            text: "Swap {amountIn} {tokenIn} for at least {amountOutMin} {tokenOut}, send to {to}",
-            holes: [
-              { name: "amountIn", format: { kind: "tokenAmount", decimals: 18 } },
-              { name: "tokenIn", format: { kind: "address" } },
-              { name: "amountOutMin", format: { kind: "tokenAmount", decimals: 6 } },
-              { name: "tokenOut", format: { kind: "address" } },
-              { name: "to", format: { kind: "address" } },
-            ],
-          },
-        },
-      ],
-    },
-  ],
-  bindings: [
-    {
-      selector: "0x38ed1739",
-      abiSignature: "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
-      intentFnName: "swapExactTokensForTokens",
-      paramMapping: ["amountIn", "amountOutMin", "path", "to", "deadline"],
-    },
-  ],
-};
+export const UNISWAP_V2_SPEC: IntentSpec = loadIntentSpec(
+  UNISWAP_V2_INTENT_JSON,
+  "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+  { type: "protocol" }
+);
 
 // ─── Address-only specs (display metadata for resolution) ────────────────────
 
