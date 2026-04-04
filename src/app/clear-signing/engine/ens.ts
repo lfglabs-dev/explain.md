@@ -99,7 +99,18 @@ export async function readSpecFromEns(
     }
 
     console.log("[ENS] Found:", value);
-    const entry = JSON.parse(value) as EnsSpecEntry;
+    const raw = JSON.parse(value);
+    // Normalize: support both old format (specName/type/decimals/symbol)
+    // and new format (spec/deploy/circuits)
+    const entry: EnsSpecEntry = raw.spec
+      ? raw
+      : {
+          spec: raw.specName,
+          deploy: (raw.decimals || raw.symbol)
+            ? { decimals: raw.decimals, symbol: raw.symbol }
+            : undefined,
+          circuits: raw.circuits,
+        };
     ensCache.set(cacheKey, { entry, ts: Date.now() });
     return entry;
   } catch (e) {

@@ -52,21 +52,45 @@ export const SPECS = STATIC_SPECS;
 
 // ─── ENS-aware lookup ───────────────────────────────────────────────────────
 
+export type SpecLookupResult = {
+  spec: IntentSpec;
+  /** Where the spec was resolved from */
+  source: "ens" | "static";
+  /** ENS entry if resolved from ENS */
+  ensEntry?: EnsSpecEntry;
+};
+
 /**
  * Find a spec by contract address.
  * Tries ENS first (veryclear.eth), falls back to static registry.
+ * Returns the source so the UI can show where the spec came from.
  */
 export async function findSpecFromEns(
   contractAddress: string
-): Promise<IntentSpec | null> {
+): Promise<SpecLookupResult | null> {
+  // Try ENS (veryclear.eth)
   const ensEntry = await readSpecFromEns(contractAddress);
   if (ensEntry) {
     const json = SPEC_JSONS[ensEntry.spec];
     if (json) {
-      return loadIntentSpec(json, contractAddress, ensEntry);
+      console.log("[specs] Resolved from ENS:", ensEntry.spec);
+      return {
+        spec: loadIntentSpec(json, contractAddress, ensEntry),
+        source: "ens",
+        ensEntry,
+      };
     }
+    console.warn("[specs] ENS entry found but no matching spec JSON:", ensEntry.spec);
   }
-  return STATIC_SPECS[contractAddress.toLowerCase()] ?? null;
+
+  // Fall back to static registry
+  const staticSpec = STATIC_SPECS[contractAddress.toLowerCase()];
+  if (staticSpec) {
+    console.log("[specs] Resolved from static fallback");
+    return { spec: staticSpec, source: "static" };
+  }
+
+  return null;
 }
 
 /** Synchronous fallback (for non-async contexts). */

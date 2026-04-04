@@ -16,7 +16,6 @@ import {
   getVkeyHash,
   type ProofResult,
 } from "./engine/prover";
-import { readSpecFromEns, type EnsSpecEntry } from "./engine/ens";
 import { DEMO_EXAMPLE } from "./engine/examples";
 import type {
   IntentSpec,
@@ -32,7 +31,7 @@ import type {
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type Step =
-  | { kind: "spec-match"; spec: IntentSpec | null; address: string }
+  | { kind: "spec-match"; spec: IntentSpec | null; address: string; source?: "ens" | "static" }
   | { kind: "function-id"; binding: Binding | null; selector: string }
   | {
       kind: "calldata-decode";
@@ -354,7 +353,12 @@ function SpecMatchStep({
             </span>{" "}
             matches{" "}
             <strong className="font-semibold">{step.spec.contractName}</strong>{" "}
-            spec
+            spec{" "}
+            <span className={`text-[12px] font-mono ${
+              step.source === "ens" ? "text-emerald-600" : "text-amber-500"
+            }`}>
+              ({step.source === "ens" ? "from veryclear.eth" : "static fallback"})
+            </span>
           </p>
           {spec && LEAN_SOURCES[spec.contractName] && (
             <details className="mt-2">
@@ -829,11 +833,11 @@ export default function ClearSigningPage() {
     try {
       // Step 1: Spec lookup
       await delay(300);
-      spec = await findSpecFromEns(contractAddress);
-      addStep({ kind: "spec-match", spec, address: contractAddress });
+      const lookup = await findSpecFromEns(contractAddress);
+      spec = lookup?.spec ?? null;
+      addStep({ kind: "spec-match", spec, address: contractAddress, source: lookup?.source });
       if (spec) setActiveSpec(spec);
       if (!spec) {
-
         return;
       }
 
@@ -949,10 +953,9 @@ export default function ClearSigningPage() {
 
           // Verify circuit commitment against ENS registry
           let circuitCheck: { ensHash: string | null; localHash: string | null; match: boolean } | undefined;
-          const ensEntry = await readSpecFromEns(contractAddress);
           const localHash = await getVkeyHash(spec.contractName, binding.intentFnName);
-          if (ensEntry?.circuits && localHash) {
-            const ensHash = ensEntry.circuits[binding.intentFnName] ?? null;
+          if (lookup?.ensEntry?.circuits && localHash) {
+            const ensHash = lookup.ensEntry.circuits[binding.intentFnName] ?? null;
             circuitCheck = {
               ensHash,
               localHash,
