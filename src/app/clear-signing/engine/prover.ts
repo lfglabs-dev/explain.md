@@ -78,6 +78,33 @@ function getCircuitName(
   return CIRCUIT_REGISTRY[`${specName}:${functionName}`] ?? null;
 }
 
+/**
+ * Compute the SHA-256 hash of a circuit's verification key.
+ * Used to verify that the circuit matches the ENS registry commitment.
+ */
+export async function getVkeyHash(
+  specName: string,
+  functionName: string
+): Promise<string | null> {
+  const circuitName = getCircuitName(specName, functionName);
+  if (!circuitName) return null;
+
+  const vkeyPath = `/circuits/${circuitName}/vkey.json`;
+  try {
+    const response = await fetch(vkeyPath);
+    const vkeyText = await response.text();
+    const hashBuffer = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(vkeyText)
+    );
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  } catch {
+    return null;
+  }
+}
+
 // ─── Uint256 Splitting ──────────────────────────────────────────────────────
 
 /**

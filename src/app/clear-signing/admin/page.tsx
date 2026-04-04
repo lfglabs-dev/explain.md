@@ -24,6 +24,10 @@ const PRESET_SPECS: Record<string, EnsSpecEntry> = {
     type: "token",
     decimals: 6,
     symbol: "USDC",
+    circuits: {
+      transfer: "7a97aa1eb1a3aa3650a45efe1142ef01f45bf8c3b162c382c33f74bfd21d1435",
+      approve: "dd2bcbb99a4830637a7ec903932d134e83d094cd2e51e6ffb38cd48e8251ef0f",
+    },
   },
   "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D": {
     specName: "UniswapV2Router",

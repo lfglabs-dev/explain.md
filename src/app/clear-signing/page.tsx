@@ -13,8 +13,10 @@ import {
 import {
   hasCircuit,
   generateAndVerifyProof,
+  getVkeyHash,
   type ProofResult,
 } from "./engine/prover";
+import { readSpecFromEns, type EnsSpecEntry } from "./engine/ens";
 import { DEMO_EXAMPLE } from "./engine/examples";
 import type {
   IntentSpec,
@@ -52,6 +54,12 @@ type Step =
       status: "pending" | "success" | "error" | "unavailable";
       result: ProofResult | null;
       error?: string;
+      /** Circuit commitment verification against ENS */
+      circuitCheck?: {
+        ensHash: string | null;
+        localHash: string | null;
+        match: boolean;
+      };
     };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -734,6 +742,42 @@ function ProofStep({
           </p>
         </div>
 
+        {step.circuitCheck && (
+          <div className={`px-4 py-3 rounded-lg border ${
+            step.circuitCheck.match
+              ? "border-emerald-200 bg-emerald-50"
+              : "border-amber-200 bg-amber-50"
+          }`}>
+            <p className={`text-[13px] font-medium ${
+              step.circuitCheck.match ? "text-emerald-800" : "text-amber-800"
+            }`}>
+              {step.circuitCheck.match
+                ? "Circuit commitment matches ENS registry"
+                : "Circuit commitment not found in ENS registry"}
+            </p>
+            <div className="mt-1.5 font-mono text-[11px] space-y-0.5">
+              <div className="flex gap-2">
+                <span className={step.circuitCheck.match ? "text-emerald-600" : "text-amber-600"}>
+                  vkey hash:
+                </span>
+                <span className="break-all text-secondary">
+                  {step.circuitCheck.localHash?.slice(0, 16)}...
+                </span>
+              </div>
+              {step.circuitCheck.ensHash && (
+                <div className="flex gap-2">
+                  <span className={step.circuitCheck.match ? "text-emerald-600" : "text-amber-600"}>
+                    ENS record:
+                  </span>
+                  <span className="break-all text-secondary">
+                    {step.circuitCheck.ensHash.slice(0, 16)}...
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <details>
           <summary className="text-[13px] text-amber-600 cursor-pointer select-none hover:text-amber-700 transition-colors">
             View trust assumption
@@ -902,11 +946,25 @@ export default function ClearSigningPage() {
             params,
             emitted
           );
+
+          // Verify circuit commitment against ENS registry
+          let circuitCheck: { ensHash: string | null; localHash: string | null; match: boolean } | undefined;
+          const ensEntry = await readSpecFromEns(contractAddress);
+          const localHash = await getVkeyHash(spec.contractName, binding.intentFnName);
+          if (ensEntry?.circuits && localHash) {
+            const ensHash = ensEntry.circuits[binding.intentFnName] ?? null;
+            circuitCheck = {
+              ensHash,
+              localHash,
+              match: ensHash === localHash,
+            };
+          }
+
           setSteps((prev) => {
             const updated = [...prev];
             const idx = updated.findIndex((s) => s.kind === "proof");
             if (idx >= 0) {
-              updated[idx] = { kind: "proof", status: "success", result };
+              updated[idx] = { kind: "proof", status: "success", result, circuitCheck };
             }
             return updated;
           });

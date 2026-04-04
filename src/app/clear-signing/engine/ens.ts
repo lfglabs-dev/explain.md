@@ -23,6 +23,9 @@ export type EnsSpecEntry = {
   type: "token" | "protocol" | "contract" | "ens";
   decimals?: number;
   symbol?: string;
+  /** SHA-256 hashes of verification keys, keyed by function name.
+   *  Pins the exact circuit that was compiled from this spec. */
+  circuits?: Record<string, string>;
 };
 
 // ─── Internals ──────────────────────────────────────────────────────────────
