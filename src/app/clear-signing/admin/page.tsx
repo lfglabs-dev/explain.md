@@ -202,19 +202,18 @@ export default function AdminPage() {
                   <div className="font-mono text-[11px] text-secondary mb-2">
                     {c.address}
                   </div>
-                  {entry ? (
-                    <pre className="bg-surface rounded px-3 py-2 text-[11px] font-mono overflow-x-auto">
+                  {entry && (
+                    <pre className="bg-surface rounded px-3 py-2 text-[11px] font-mono overflow-x-auto mb-2">
                       {JSON.stringify(entry, null, 2)}
                     </pre>
-                  ) : (
-                    account && (
-                      <button
-                        onClick={() => handleWritePreset(c.address)}
-                        className="px-3 py-1.5 text-[12px] font-mono border border-border rounded hover:bg-surface transition-colors cursor-pointer"
-                      >
-                        Register
-                      </button>
-                    )
+                  )}
+                  {account && (
+                    <button
+                      onClick={() => handleWritePreset(c.address)}
+                      className="px-3 py-1.5 text-[12px] font-mono border border-border rounded hover:bg-surface transition-colors cursor-pointer"
+                    >
+                      {entry ? "Update" : "Register"}
+                    </button>
                   )}
                 </div>
               );
