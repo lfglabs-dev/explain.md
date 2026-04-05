@@ -100,11 +100,11 @@ const slides: Slide[] = [
   },
   {
     label: "How It Works",
-    title: "Step 5: Address resolution",
+    title: "Step 5: External spec resolution",
     bullets: [
-      "Raw addresses in the template are resolved against the spec registry",
-      "0x7a250d... becomes UniswapV2Router",
-      "Unknown addresses stay truncated (0xAbCd...1234)",
+      "Raw addresses in the template are looked up in the registry",
+      "Each spec can define constants: name, decimals, symbol, etc.",
+      "0x7a250d... becomes UniswapV2Router, amounts get formatted with the right decimals",
     ],
   },
   {
