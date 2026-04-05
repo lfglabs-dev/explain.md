@@ -1,7 +1,7 @@
 const {ethers} = require('ethers');
 const p = new ethers.JsonRpcProvider('https://ethereum-rpc.publicnode.com');
 (async()=>{
-  const r = await p.getResolver('veryklear.eth');
+  const r = await p.getResolver('veryclear.eth');
   if (!r) { console.log('no resolver'); return; }
   console.log('resolver:', r.address);
   for (const k of [

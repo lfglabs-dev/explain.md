@@ -84,7 +84,7 @@ The browser communicates with the Nano via WebHID (no npm dependencies). The tra
 VK hashes are stored as text records on ENS:
 
 ```
-ENS name: veryklear.eth
+ENS name: veryclear.eth
 Key:      vkHash:ERC20_approve
 Value:    cd361ed5f2a52e4e4bb981b8c6b47a72679c3e367e5132e219929ad54cd877bb
 ```

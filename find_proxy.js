@@ -22,7 +22,7 @@ const R = "0xF29100983E058B709F3D539b0c765937B804AC15";
   const iface = new ethers.Interface([
     "function text(bytes32 node, string key) view returns (string)"
   ]);
-  const node = ethers.namehash("veryklear.eth");
+  const node = ethers.namehash("veryclear.eth");
   const calldata = iface.encodeFunctionData("text", [node, "vkHash:ERC20_approve"]);
   
   try {

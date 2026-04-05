@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { ExternalLink, Disclosure } from "../components";
-import { findSpec, findSpecFromEns } from "../clear-signing/engine/specs";
+import { findSpecFromEns } from "../clear-signing/engine/specs";
 import { extractSelector, decodeCalldata } from "../clear-signing/engine/decoder";
 import { evaluateIntent, collectAllTemplates } from "../clear-signing/engine/evaluator";
 import {

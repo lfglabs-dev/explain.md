@@ -1,7 +1,7 @@
 const { ethers } = require("ethers");
 const p = new ethers.JsonRpcProvider("https://ethereum-rpc.publicnode.com");
 const R = "0xF29100983E058B709F3D539b0c765937B804AC15";
-const node = ethers.namehash("veryklear.eth");
+const node = ethers.namehash("veryclear.eth");
 const key = "vkHash:ERC20_approve";
 
 // The resolver is an ERC-634 text resolver

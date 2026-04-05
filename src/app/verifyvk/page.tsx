@@ -24,7 +24,7 @@ type Step = {
 };
 
 export default function VerifyVKPage() {
-  const [ensName, setEnsName] = useState("veryklear.eth");
+  const [ensName, setEnsName] = useState("veryclear.eth");
   const [vkHashOnChain, setVkHashOnChain] = useState("");
   const [vkHashEditable, setVkHashEditable] = useState("");
   const [localHash, setLocalHash] = useState("");

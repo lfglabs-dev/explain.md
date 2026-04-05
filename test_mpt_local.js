@@ -7,7 +7,7 @@ const R = "0xF29100983E058B709F3D539b0c765937B804AC15";
 (async () => {
   const e = ethers;
   const p = new e.JsonRpcProvider(RPC);
-  const node = e.namehash("veryklear.eth");
+  const node = e.namehash("veryclear.eth");
   const keyBytes = e.toUtf8Bytes("vkHash:ERC20_approve");
 
   // Compute slots (base=10, ver=0)

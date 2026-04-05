@@ -134,7 +134,7 @@ Verify an Ethereum Merkle Patricia Trie (MPT) storage proof that the VK hash is 
 The VK hash is stored as an ENS text record:
 
 ```
-ENS:   veryklear.eth
+ENS:   veryclear.eth
 Key:   vkHash:ERC20_approve
 Value: cd361ed5f2a52e4e4bb981b8c6b47a72679c3e367e5132e219929ad54cd877bb
 ```

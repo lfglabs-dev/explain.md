@@ -1,7 +1,7 @@
 const { ethers } = require("ethers");
 const p = new ethers.JsonRpcProvider("https://ethereum-rpc.publicnode.com");
 const RESOLVER = "0xF29100983E058B709F3D539b0c765937B804AC15";
-const ENS = "veryklear.eth";
+const ENS = "veryclear.eth";
 const KEY = "vkHash:ERC20_approve";
 
 (async () => {
