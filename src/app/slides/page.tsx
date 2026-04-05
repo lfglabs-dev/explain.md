@@ -50,8 +50,7 @@ const slides: Slide[] = [
     label: "The Solution",
     title: "So we built a ZK circuit compiler",
     bullets: [
-      "Same Lean spec compiles to a Groth16 circuit",
-      "Proves this template matches the calldata, the Ledger fills the holes",
+      "The same code compiles to a circuit which the Ledger uses to verify that the displayed template matches the calldata",
     ],
     image: "/slides/ledger.png",
   },
