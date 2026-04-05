@@ -50,13 +50,18 @@ const slides: Slide[] = [
     label: "The Solution",
     title: "So we built a ZK circuit compiler",
     bullets: [
-      "The Verity compiler generates a Groth16 circuit from the same Lean spec",
-      "The circuit proves: this natural language string is the correct interpretation of this calldata",
-      "A hardware wallet just verifies a proof, 4 pairings on BLS12-381",
+      "Same Lean spec compiles to a Groth16 circuit",
+      "Proves this template matches the calldata, the Ledger fills the holes",
     ],
+    image: "/slides/ledger.png",
   },
 
   // ── Act 3: How It Works ──
+  {
+    label: "",
+    title: "How it works",
+    variant: "title",
+  },
   {
     label: "How It Works",
     title: "Step 1: Spec lookup",
@@ -148,16 +153,11 @@ function highlightCode(line: string): React.ReactNode {
       /"([^"]*)"/g,
       '<str>"$1"</str>'
     )
-    .replace(
-      /\b(maxUint256|decimals)\b/g,
-      '<id>$1</id>'
-    )
-    .split(/(<kw>.*?<\/kw>|<ty>.*?<\/ty>|<str>.*?<\/str>|<id>.*?<\/id>)/)
+    .split(/(<kw>.*?<\/kw>|<ty>.*?<\/ty>|<str>.*?<\/str>)/)
     .map((part, i) => {
       if (part.startsWith('<kw>')) return <span key={i} className="text-[#907aa9]">{part.slice(4, -5)}</span>;
       if (part.startsWith('<ty>')) return <span key={i} className="text-[#ea9d34]">{part.slice(4, -5)}</span>;
       if (part.startsWith('<str>')) return <span key={i} className="text-[#56949f]">{part.slice(5, -6)}</span>;
-      if (part.startsWith('<id>')) return <span key={i} className="text-[#286983]">{part.slice(4, -5)}</span>;
       return part;
     });
 }
