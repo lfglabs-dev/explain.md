@@ -18,7 +18,8 @@ import { ethers } from "ethers";
 const MAINNET_RPC = "https://ethereum-rpc.publicnode.com";
 const ENS_NAME = "veryclear.eth";
 const RESOLVER_ADDR = "0xF29100983E058B709F3D539b0c765937B804AC15";
-const VK_HASH_KEY = "vkHash:ERC20_approve";
+// Text record key: the USDC contract address (per-contract JSON contains circuit hashes)
+const VK_HASH_KEY = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 
 /**
  * Compute storage slot for a text record in PublicResolver.

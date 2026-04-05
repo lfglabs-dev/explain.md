@@ -10,7 +10,9 @@ import {
 
 const INS_VERIFY_VK_STORAGE = 0x64;
 const RPC = "https://ethereum-rpc.publicnode.com";
-const TEXT_KEY = "vkHash:ERC20_approve";
+// USDC contract address — the per-contract JSON is keyed by this
+const CONTRACT_ADDR = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+const CIRCUIT_FN = "approve"; // which circuit function to verify
 const VKEY_PATH = "/circuits/ERC20_approve/vkey.json";
 
 // Discovered layout: versionable_texts at base_slot=10, version=0
@@ -47,7 +49,7 @@ export default function VerifyVKPage() {
 
   /* ── Compute storage slots ──────────────────────────────────── */
   function computeSlots(ethers: typeof import("ethers"), ensNode: string) {
-    const keyBytes = ethers.toUtf8Bytes(TEXT_KEY);
+    const keyBytes = ethers.toUtf8Bytes(CONTRACT_ADDR);
     // Level 1: versionable_texts mapping(uint64 => ...) at BASE_SLOT
     const s1 = ethers.keccak256(
       ethers.AbiCoder.defaultAbiCoder().encode(
@@ -79,7 +81,7 @@ export default function VerifyVKPage() {
 
     const newSteps: Step[] = [
       { label: "Resolve ENS name", status: "running" },
-      { label: "Fetch VK hash from text record", status: "pending" },
+      { label: "Read contract spec from ENS", status: "pending" },
       { label: "Compute local VK hash", status: "pending" },
       { label: "Compute storage slots", status: "pending" },
       { label: "Fetch storage proofs (eth_getProof)", status: "pending" },
@@ -99,15 +101,18 @@ export default function VerifyVKPage() {
         detail: `Resolver: ${resolver.address}`,
       });
 
-      // Step 1: Fetch text record
+      // Step 1: Fetch per-contract JSON from ENS and extract circuit hash
       updateStep(1, { status: "running" });
-      const onChain = await resolver.getText(TEXT_KEY);
-      if (!onChain) throw new Error(`No text record for "${TEXT_KEY}"`);
+      const specJson = await resolver.getText(CONTRACT_ADDR);
+      if (!specJson) throw new Error(`No text record for contract ${CONTRACT_ADDR}`);
+      const specEntry = JSON.parse(specJson);
+      const onChain = specEntry?.circuits?.[CIRCUIT_FN];
+      if (!onChain) throw new Error(`No circuit hash for "${CIRCUIT_FN}" in spec entry`);
       setVkHashOnChain(onChain);
       setVkHashEditable(onChain);
       updateStep(1, {
         status: "success",
-        detail: `${onChain.slice(0, 24)}...`,
+        detail: `${specEntry.spec}.${CIRCUIT_FN}: ${onChain.slice(0, 24)}...`,
       });
 
       // Step 2: Local VK hash

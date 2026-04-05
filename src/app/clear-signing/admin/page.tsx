@@ -18,14 +18,11 @@ const KNOWN_CONTRACTS = [
   { address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", label: "WETH" },
 ];
 
-const PRESET_SPECS: Record<string, EnsSpecEntry> = {
+/** Presets without circuit hashes — computed at runtime from local vkey files. */
+const PRESET_SPECS_BASE: Record<string, Omit<EnsSpecEntry, "circuits">> = {
   "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": {
     spec: "ERC20",
     deploy: { symbol: "USDC", decimals: 6 },
-    circuits: {
-      transfer: "7a97aa1eb1a3aa3650a45efe1142ef01f45bf8c3b162c382c33f74bfd21d1435",
-      approve: "dd2bcbb99a4830637a7ec903932d134e83d094cd2e51e6ffb38cd48e8251ef0f",
-    },
   },
   "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D": {
     spec: "UniswapV2Router",
@@ -35,6 +32,40 @@ const PRESET_SPECS: Record<string, EnsSpecEntry> = {
     deploy: { symbol: "WETH", decimals: 18 },
   },
 };
+
+/** Circuit name mapping: specName:functionName → artifact directory name */
+const CIRCUIT_MAP: Record<string, string> = {
+  "ERC20:transfer": "ERC20_transfer",
+  "ERC20:approve": "ERC20_approve",
+};
+
+/** Compute SHA-256 of a vkey.json file */
+async function hashVkey(circuitDir: string): Promise<string> {
+  const resp = await fetch(`/circuits/${circuitDir}/vkey.json`);
+  const text = await resp.text();
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Build a full preset with circuit hashes computed from local vkey files. */
+async function buildPreset(address: string): Promise<EnsSpecEntry> {
+  const base = PRESET_SPECS_BASE[address];
+  if (!base) throw new Error(`No preset for ${address}`);
+
+  const circuits: Record<string, string> = {};
+  for (const [key, dir] of Object.entries(CIRCUIT_MAP)) {
+    const [specName] = key.split(":");
+    if (specName === base.spec) {
+      const fnName = key.split(":")[1];
+      circuits[fnName] = await hashVkey(dir);
+    }
+  }
+
+  return {
+    ...base,
+    circuits: Object.keys(circuits).length > 0 ? circuits : undefined,
+  };
+}
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
@@ -99,11 +130,11 @@ export default function AdminPage() {
   const handleWritePreset = useCallback(
     async (address: string) => {
       if (!provider) return;
-      const entry = PRESET_SPECS[address];
-      if (!entry) return;
 
-      setTxStatus(`Sending setText for ${address.slice(0, 10)}...`);
+      setTxStatus(`Computing vkey hashes from local circuit artifacts...`);
       try {
+        const entry = await buildPreset(address);
+        setTxStatus(`Sending setText for ${address.slice(0, 10)}... (circuits: ${Object.keys(entry.circuits ?? {}).join(", ") || "none"})`);
         const txHash = await writeSpecToEns(provider, address, entry);
         setTxStatus(`Confirmed: ${txHash}`);
         await refreshEntries();
