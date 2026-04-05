@@ -10,6 +10,7 @@ type Slide = {
   bullets?: string[];
   footnote?: string;
   image?: string;
+  imageClass?: string;
   code?: string;
   variant?: "title" | "demo" | "default";
 };
@@ -66,10 +67,9 @@ const slides: Slide[] = [
     title: "Step 1: Spec lookup",
     bullets: [
       "The contract address is matched against the veryclear.eth ENS registry",
-      "Each entry maps a contract to a compiled spec (e.g. ERC20, UniswapV2)",
-      "The registry is on-chain, verifiable by anyone",
     ],
     image: "/slides/ens.png",
+    imageClass: "mt-6 h-16",
   },
   {
     label: "How It Works",
@@ -120,11 +120,12 @@ const slides: Slide[] = [
     label: "How It Works",
     title: "Step 7: Hardware verification",
     bullets: [
-      "The proof + verification key + intent text are sent to the Ledger Nano S+",
-      "The Ledger displays the intent, user confirms with physical buttons",
-      "On approve: 4-pairing Groth16 check on ARM Cortex-M35P secure element",
+      "The proof, verification key and template are sent to the Ledger",
+      "The Ledger verifies the template is the correct interpretation of the calldata",
+      "It fills the holes with the actual values and displays the result for user confirmation",
     ],
-    footnote: "The browser generates, the hardware verifies. Zero trust required.",
+    footnote:
+      "The browser generates, the hardware verifies. Zero trust required.",
   },
 
   // ── Closing ──
@@ -141,23 +142,29 @@ function highlightCode(line: string): React.ReactNode {
   if (line.trim() === "") return "\u00A0";
   // Simple Lean-like syntax highlighting
   return line
-    .replace(
-      /\b(intent|when|otherwise|emit|where)\b/g,
-      '<kw>$1</kw>'
-    )
-    .replace(
-      /\b(address|uint256|bool)\b/g,
-      '<ty>$1</ty>'
-    )
-    .replace(
-      /"([^"]*)"/g,
-      '<str>"$1"</str>'
-    )
+    .replace(/\b(intent|when|otherwise|emit|where)\b/g, "<kw>$1</kw>")
+    .replace(/\b(address|uint256|bool)\b/g, "<ty>$1</ty>")
+    .replace(/"([^"]*)"/g, '<str>"$1"</str>')
     .split(/(<kw>.*?<\/kw>|<ty>.*?<\/ty>|<str>.*?<\/str>)/)
     .map((part, i) => {
-      if (part.startsWith('<kw>')) return <span key={i} className="text-[#907aa9]">{part.slice(4, -5)}</span>;
-      if (part.startsWith('<ty>')) return <span key={i} className="text-[#ea9d34]">{part.slice(4, -5)}</span>;
-      if (part.startsWith('<str>')) return <span key={i} className="text-[#56949f]">{part.slice(5, -6)}</span>;
+      if (part.startsWith("<kw>"))
+        return (
+          <span key={i} className="text-[#907aa9]">
+            {part.slice(4, -5)}
+          </span>
+        );
+      if (part.startsWith("<ty>"))
+        return (
+          <span key={i} className="text-[#ea9d34]">
+            {part.slice(4, -5)}
+          </span>
+        );
+      if (part.startsWith("<str>"))
+        return (
+          <span key={i} className="text-[#56949f]">
+            {part.slice(5, -6)}
+          </span>
+        );
       return part;
     });
 }
@@ -190,15 +197,13 @@ function SlideView({ slide }: { slide: Slide }) {
         <img
           src={slide.image}
           alt=""
-          className="mt-8 max-h-[40vh] rounded-lg"
+          className={slide.imageClass ?? "mt-8 max-h-[40vh] rounded-lg"}
         />
       )}
       {slide.code && (
         <pre className="mt-8 bg-[#faf4ed] rounded-lg px-6 py-5 text-[15px] leading-[1.7] font-mono max-w-2xl overflow-x-auto">
           {slide.code.split("\n").map((line, i) => (
-            <div key={i}>
-              {highlightCode(line)}
-            </div>
+            <div key={i}>{highlightCode(line)}</div>
           ))}
         </pre>
       )}
@@ -261,7 +266,9 @@ export default function SlidesPage() {
           <div
             key={i}
             className={`h-1.5 w-1.5 rounded-full transition-opacity ${
-              i === current ? "bg-foreground opacity-60" : "bg-foreground opacity-15"
+              i === current
+                ? "bg-foreground opacity-60"
+                : "bg-foreground opacity-15"
             }`}
           />
         ))}
