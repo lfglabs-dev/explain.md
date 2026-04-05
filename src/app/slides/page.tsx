@@ -69,7 +69,7 @@ const slides: Slide[] = [
       "The contract address is matched against the veryclear.eth ENS registry",
     ],
     image: "/slides/ens.png",
-    imageClass: "mt-6 h-16",
+    imageClass: "mt-6 h-24",
   },
   {
     label: "How It Works",
