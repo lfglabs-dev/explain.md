@@ -41,7 +41,7 @@ next-env.d.ts
 # project
 .explain-md/
 
-# screenshots
-*.png
+# screenshots (not public assets)
+/*.png
 verity/
 trustlessinference/

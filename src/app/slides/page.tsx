@@ -69,6 +69,7 @@ const slides: Slide[] = [
       "Each entry maps a contract to a compiled spec (e.g. ERC20, UniswapV2)",
       "The registry is on-chain, verifiable by anyone",
     ],
+    image: "/slides/ens.png",
   },
   {
     label: "How It Works",
